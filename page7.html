@@ -60,90 +60,105 @@
   </div>
 </main>
 
-<script>
-/***** ▼ 설정 ▼ *****/
-const API = "https://script.google.com/macros/s/AKfycbxhI7GJJI2jebIWhxr_3nkvvYStEtzNjFZpUuIezsnNKd7G1Mf8emvyrW_AJUsZNg2U/exec";
-const PAGE = 7;
-const NEXT_PAGE_URL = "page8.html";
-/***** ▲ 설정 끝 ▲ *****/
+<script type="module">
+  /***** ▼ Firebase 초기 설정 ▼ *****/
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-(function(){
-  const qs = new URLSearchParams(location.search);
-  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-  const nextBtn = document.getElementById('nextBtn');
-  let sending = false;
+  const firebaseConfig = {
+    apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
+    authDomain: "to-be-a-master.firebaseapp.com",
+    projectId: "to-be-a-master",
+    storageBucket: "to-be-a-master.firebasestorage.app",
+    messagingSenderId: "223906864735",
+    appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
+    measurementId: "G-SXF1BMH4DB"
+  };
 
-  // 칩 생성
-  document.querySelectorAll('.scale').forEach(scale=>{
-    const name = scale.dataset.name;
-    for(let v=1; v<=5; v++){
-      const lab=document.createElement('label');
-      lab.className='chip';
-      lab.innerHTML=`<input type="radio" name="${name}" value="${v}"><strong>${v}</strong>`;
-      scale.appendChild(lab);
-    }
-  });
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  /***** ▲ Firebase 설정 끝 ▲ *****/
 
-  function refreshGroup(name){
-    document.querySelectorAll(`label.chip input[name="${name}"]`).forEach(r=>{
-      const lab=r.closest('label.chip');
-      lab.classList.toggle('selected',r.checked);
+  /***** ▼ 페이지 설정 ▼ *****/
+  const PAGE = 7;
+  const NEXT_PAGE_URL = "page8.html";
+  /***** ▲ 설정 끝 ▲*/
+
+  (function(){
+    const qs = new URLSearchParams(location.search);
+    const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
+    const nextBtn = document.getElementById('nextBtn');
+    let sending = false;
+
+    // 칩 생성
+    document.querySelectorAll('.scale').forEach(scale=>{
+      const name = scale.dataset.name;
+      for(let v=1; v<=5; v++){
+        const lab=document.createElement('label');
+        lab.className='chip';
+        lab.innerHTML=`<input type="radio" name="${name}" value="${v}"><strong>${v}</strong>`;
+        scale.appendChild(lab);
+      }
     });
-  }
-  document.addEventListener('change',e=>{
-    if(e.target.matches('input[type="radio"]')){
-      refreshGroup(e.target.name);
-      refreshBtn();
-    }
-  });
 
-  const REQUIRED=['q1','q2','q3'];
-  function allAnswered(){return REQUIRED.every(n=>document.querySelector(`input[name="${n}"]:checked`));}
-  function refreshBtn(){nextBtn.disabled=!allAnswered()||sending;}
-  refreshBtn();
-
-  // 안전한 데이터 전송
-  async function sessionUpsert(answers){
-    const payload={type:'SESSION_UPSERT',pid,page:PAGE,answers};
-    const data=JSON.stringify(payload);
-
-    // navigator.sendBeacon() 사용 (페이지 이동 시 안전)
-    if(navigator.sendBeacon){
-      const blob=new Blob([data],{type:'text/plain'});
-      const ok=navigator.sendBeacon(API,blob);
-      if(ok) return true;
+    function refreshGroup(name){
+      document.querySelectorAll(`label.chip input[name="${name}"]`).forEach(r=>{
+        const lab=r.closest('label.chip');
+        lab.classList.toggle('selected',r.checked);
+      });
     }
 
-    // fallback → fetch
-    const res=await fetch(API,{
-      method:'POST',
-      headers:{'Content-Type':'text/plain'},
-      body:data,
-      keepalive:true // unload 시에도 시도
+    document.addEventListener('change',e=>{
+      if(e.target.matches('input[type="radio"]')){
+        refreshGroup(e.target.name);
+        refreshBtn();
+      }
     });
-    return res.ok;
-  }
 
-  nextBtn.addEventListener('click',async()=>{
-    if(!allAnswered()||sending) return;
-    sending=true; refreshBtn();
+    const REQUIRED=['q1','q2','q3'];
+    function allAnswered(){return REQUIRED.every(n=>document.querySelector(`input[name="${n}"]:checked`));}
+    function refreshBtn(){nextBtn.disabled=!allAnswered()||sending;}
+    refreshBtn();
 
-    function valOf(name){return document.querySelector(`input[name="${name}"]:checked`).value;}
-    const answers=[
-      {key:'P6_Q1',value:valOf('q1')},
-      {key:'P6_Q2',value:valOf('q2')},
-      {key:'P6_Q3',value:valOf('q3')}
-    ];
+    // ✅ Firestore 저장
+    async function saveToFirestore(answers){
+      if(!pid) return;
+      try {
+        await addDoc(collection(db, "responses"), {
+          pid,
+          page: PAGE,
+          answers,
+          timestamp: new Date()
+        });
+        console.log("✅ Firestore 저장 완료 (page 7)");
+      } catch(e){
+        console.error("❌ Firestore 저장 실패:", e);
+        throw e;
+      }
+    }
 
-    try{
-      await sessionUpsert(answers);
-      // 약간의 지연 → 네트워크 플러시 확보
-      await new Promise(r=>setTimeout(r,300));
-    }catch(e){console.warn(e);}
+    nextBtn.addEventListener('click', async ()=>{
+      if(!allAnswered()||sending) return;
+      sending = true; refreshBtn();
 
-    location.href=`${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-  });
-})();
+      function valOf(name){return document.querySelector(`input[name="${name}"]:checked`).value;}
+      const answers=[
+        {key:'P6_Q1',value:valOf('q1')},
+        {key:'P6_Q2',value:valOf('q2')},
+        {key:'P6_Q3',value:valOf('q3')}
+      ];
+
+      try{
+        await saveToFirestore(answers);
+        // 약간의 지연 → 네트워크 플러시 확보
+        await new Promise(r=>setTimeout(r,300));
+      }catch(e){console.warn(e);}
+
+      location.href=`${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+    });
+
+  })();
 </script>
+
 </body>
 </html>
