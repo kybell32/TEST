@@ -152,36 +152,40 @@
     }
 
     nextBtn.addEventListener('click', async () => {
-      const ans = getAnswers();
-      if (!allYes(ans)) return;
-      const name = pname.value.trim();
+  const ans = getAnswers();
+  if (!allYes(ans)) return;
+  const name = pname.value.trim();
 
-      const answers = {
-        pid,
-        page: PAGE,
-        P3_Q1: ans.q1,
-        P3_Q2: ans.q2,
-        P3_Q3: ans.q3,
-        P3_Q4: ans.q4,
-        P3_NAME: name,
-        timestamp: new Date()
-      };
+  // 🔹 배열 구조로 저장
+  const answersArray = [
+    { question: "본 연구에 대한 설명 이해", answer: ans.q1 },
+    { question: "연구 위험과 이득 이해", answer: ans.q2 },
+    { question: "연구 참여 철회 가능 이해", answer: ans.q3 },
+    { question: "자발적 참여 의사", answer: ans.q4 },
+    { question: "참여자 성명", answer: name }
+  ];
 
-      nextBtn.disabled = true; // 중복 클릭 방지
+  const dataToSave = {
+    pid,
+    page: PAGE,
+    answers: answersArray, // 배열 형태
+    timestamp: new Date()
+  };
 
-      try {
-        // ✅ Firestore에 저장
-        await saveToFirestore(answers);
+  nextBtn.disabled = true; // 중복 클릭 방지
 
-        // 저장 성공 시 다음 페이지로 이동
-        location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-      } catch (e) {
-        console.warn('데이터 저장 실패:', e);
-        alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
-        nextBtn.disabled = false; // 재시도 가능
-      }
-    });
-  });
+  try {
+    await saveToFirestore(dataToSave);
+
+    // 저장 성공 시 다음 페이지로 이동
+    location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+  } catch (e) {
+    console.warn('데이터 저장 실패:', e);
+    alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
+    nextBtn.disabled = false; // 재시도 가능
+  }
+});
+
 </script>
 
 </body>
