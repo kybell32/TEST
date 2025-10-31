@@ -61,104 +61,97 @@
 </main>
 
 <script type="module">
-  /***** ▼ Firebase 초기 설정 ▼ *****/
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
-    authDomain: "to-be-a-master.firebaseapp.com",
-    projectId: "to-be-a-master",
-    storageBucket: "to-be-a-master.firebasestorage.app",
-    messagingSenderId: "223906864735",
-    appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
-    measurementId: "G-SXF1BMH4DB"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
+  authDomain: "to-be-a-master.firebaseapp.com",
+  projectId: "to-be-a-master",
+  storageBucket: "to-be-a-master.firebasestorage.app",
+  messagingSenderId: "223906864735",
+  appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
+  measurementId: "G-SXF1BMH4DB"
+};
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  /***** ▲ Firebase 설정 끝 ▲ *****/
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-  /***** ▼ 페이지 설정 ▼ *****/
-  const PAGE = 7;
-  const NEXT_PAGE_URL = "page8.html";
-  /***** ▲ 설정 끝 ▲*/
+const PAGE = 7;
+const NEXT_PAGE_URL = "page8.html";
 
-  (function(){
-    const qs = new URLSearchParams(location.search);
-    const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-    const nextBtn = document.getElementById('nextBtn');
-    let sending = false;
+(function(){
+  const qs = new URLSearchParams(location.search);
+  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
+  const nextBtn = document.getElementById('nextBtn');
+  let sending = false;
 
-    // 칩 생성
-    document.querySelectorAll('.scale').forEach(scale=>{
-      const name = scale.dataset.name;
-      for(let v=1; v<=5; v++){
-        const lab=document.createElement('label');
-        lab.className='chip';
-        lab.innerHTML=`<input type="radio" name="${name}" value="${v}"><strong>${v}</strong>`;
-        scale.appendChild(lab);
-      }
+  // 칩 생성
+  document.querySelectorAll('.scale').forEach(scale=>{
+    const name = scale.dataset.name;
+    for(let v=1; v<=5; v++){
+      const lab = document.createElement('label');
+      lab.className = 'chip';
+      lab.innerHTML = `<input type="radio" name="${name}" value="${v}"><strong>${v}</strong>`;
+      scale.appendChild(lab);
+    }
+  });
+
+  function refreshGroup(name){
+    document.querySelectorAll(`label.chip input[name="${name}"]`).forEach(r=>{
+      r.closest('label.chip').classList.toggle('selected', r.checked);
     });
+  }
 
-    function refreshGroup(name){
-      document.querySelectorAll(`label.chip input[name="${name}"]`).forEach(r=>{
-        const lab=r.closest('label.chip');
-        lab.classList.toggle('selected',r.checked);
-      });
+  document.addEventListener('change', e=>{
+    if(e.target.matches('input[type="radio"]')){
+      refreshGroup(e.target.name);
+      refreshBtn();
+    }
+  });
+
+  const REQUIRED = ['q1','q2','q3'];
+  function allAnswered(){ return REQUIRED.every(n=>document.querySelector(`input[name="${n}"]:checked`)); }
+  function refreshBtn(){ nextBtn.disabled = !allAnswered() || sending; }
+  refreshBtn();
+
+  // ✅ Firestore 저장 함수 (단일 문서, 배열 구조)
+  async function saveToFirestore(answers) {
+    if (!pid) return;
+    try {
+      const docRef = doc(db, "responses", pid);
+      await setDoc(docRef, {
+        page_7: { answers, timestamp: serverTimestamp() }
+      }, { merge: true });
+      console.log("✅ Firestore 저장 완료 (page 7)");
+    } catch (e) {
+      console.error("❌ Firestore 저장 실패:", e);
+      throw e;
+    }
+  }
+
+  // nextBtn 클릭 이벤트
+  nextBtn.addEventListener('click', async ()=>{
+    if (!allAnswered() || sending) return;
+    sending = true; refreshBtn();
+
+    const answers = REQUIRED.map(name => ({
+      key: document.querySelector(`.scale[data-name="${name}"]`).dataset.qkey,
+      value: document.querySelector(`input[name="${name}"]:checked`).value
+    }));
+
+    try {
+      await saveToFirestore(answers);
+      await new Promise(r=>setTimeout(r,300)); // 네트워크 안정화
+    } catch(e){
+      console.warn(e);
     }
 
-    document.addEventListener('change',e=>{
-      if(e.target.matches('input[type="radio"]')){
-        refreshGroup(e.target.name);
-        refreshBtn();
-      }
-    });
-
-    const REQUIRED=['q1','q2','q3'];
-    function allAnswered(){return REQUIRED.every(n=>document.querySelector(`input[name="${n}"]:checked`));}
-    function refreshBtn(){nextBtn.disabled=!allAnswered()||sending;}
-    refreshBtn();
-
-   // ✅ Firestore 저장 함수 (배열 구조)
-async function saveToFirestore(answers) {
-  if (!pid) return;
-  try {
-    await addDoc(collection(db, "responses"), {
-      pid,
-      page: PAGE,       // p.6
-      answers,          // 배열 형태
-      timestamp: new Date()
-    });
-    console.log("✅ Firestore 저장 완료 (page 6)");
-  } catch (e) {
-    console.error("❌ Firestore 저장 실패:", e);
-    throw e;
-  }
-}
-
-// nextBtn 클릭 이벤트
-nextBtn.addEventListener('click', async () => {
-  if (!allAnswered() || sending) return;
-  sending = true; refreshBtn();
-
-  const answers = REQUIRED.map(name => ({
-    key: document.querySelector(`.scale[data-name="${name}"]`).dataset.qkey,
-    value: document.querySelector(`input[name="${name}"]:checked`).value
-  }));
-
-  try {
-    await saveToFirestore(answers);
-    await new Promise(r => setTimeout(r, 300)); // 네트워크 플러시
-  } catch (e) {
-    console.warn(e);
-  }
-
-  location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-});
-
-  })();
+    location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+  });
+})();
 </script>
+
 
 </body>
 </html>
