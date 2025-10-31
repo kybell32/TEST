@@ -216,14 +216,48 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 1000);
 
  // 8️⃣ 안전한 리디렉션
-async function redirect(){
+// 5️⃣ Firestore 저장 함수
+async function saveToFirestore(answers){
+  if(!pid) return;
   try{
-    await saveToFirestore([]);
-    await new Promise(r => setTimeout(r, 200));
-  }catch(e){ console.warn(e); }
+    await addDoc(collection(db, "responses"), {
+      pid,
+      page: PAGE,
+      answers,          // 배열 형태로 저장
+      timestamp: new Date()
+    });
+    console.log(`✅ Firestore 저장 완료 (page ${PAGE})`);
+  }catch(e){
+    console.error("❌ Firestore 저장 실패:", e);
+    throw e;
+  }
+}
+
+// 6️⃣ 페이지 노출 기록 (배열 형태)
+saveToFirestore([
+  { key: 'P9_STIM_KEY', value: STIM_KEY },
+  { key: 'P9_SHOWN_MS', value: String(DISPLAY_MS) }
+]);
+
+// 🔹 다음 버튼 클릭 이벤트 처리
+const nextBtn = document.getElementById('nextBtn');
+nextBtn.addEventListener('click', async () => {
+  const answers = Array.from(document.querySelectorAll('.scale')).map(scale => {
+    const input = scale.querySelector('input:checked');
+    return input ? { key: scale.dataset.qkey, value: input.value } : null;
+  }).filter(Boolean);
+
+  if (!answers.every(a => a.value)) return; // 모든 문항 체크 확인
+  nextBtn.disabled = true;
+
+  try {
+    await saveToFirestore(answers);  // 선택 답변도 배열로 저장
+    await new Promise(r => setTimeout(r, 200)); // 플러시 대기
+  } catch(e){ console.warn(e); }
 
   location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-}
+});
+
 
 // 🔹 다음 버튼 클릭 이벤트 연결
 const nextBtn = document.getElementById('nextBtn');
