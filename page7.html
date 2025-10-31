@@ -120,42 +120,42 @@
     function refreshBtn(){nextBtn.disabled=!allAnswered()||sending;}
     refreshBtn();
 
-    // ✅ Firestore 저장
-    async function saveToFirestore(answers){
-      if(!pid) return;
-      try {
-        await addDoc(collection(db, "responses"), {
-          pid,
-          page: PAGE,
-          answers,
-          timestamp: new Date()
-        });
-        console.log("✅ Firestore 저장 완료 (page 7)");
-      } catch(e){
-        console.error("❌ Firestore 저장 실패:", e);
-        throw e;
-      }
-    }
-
-    nextBtn.addEventListener('click', async ()=>{
-      if(!allAnswered()||sending) return;
-      sending = true; refreshBtn();
-
-      function valOf(name){return document.querySelector(`input[name="${name}"]:checked`).value;}
-      const answers=[
-        {key:'P6_Q1',value:valOf('q1')},
-        {key:'P6_Q2',value:valOf('q2')},
-        {key:'P6_Q3',value:valOf('q3')}
-      ];
-
-      try{
-        await saveToFirestore(answers);
-        // 약간의 지연 → 네트워크 플러시 확보
-        await new Promise(r=>setTimeout(r,300));
-      }catch(e){console.warn(e);}
-
-      location.href=`${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+   // ✅ Firestore 저장 함수 (배열 구조)
+async function saveToFirestore(answers) {
+  if (!pid) return;
+  try {
+    await addDoc(collection(db, "responses"), {
+      pid,
+      page: PAGE,       // p.6
+      answers,          // 배열 형태
+      timestamp: new Date()
     });
+    console.log("✅ Firestore 저장 완료 (page 6)");
+  } catch (e) {
+    console.error("❌ Firestore 저장 실패:", e);
+    throw e;
+  }
+}
+
+// nextBtn 클릭 이벤트
+nextBtn.addEventListener('click', async () => {
+  if (!allAnswered() || sending) return;
+  sending = true; refreshBtn();
+
+  const answers = REQUIRED.map(name => ({
+    key: document.querySelector(`.scale[data-name="${name}"]`).dataset.qkey,
+    value: document.querySelector(`input[name="${name}"]:checked`).value
+  }));
+
+  try {
+    await saveToFirestore(answers);
+    await new Promise(r => setTimeout(r, 300)); // 네트워크 플러시
+  } catch (e) {
+    console.warn(e);
+  }
+
+  location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+});
 
   })();
 </script>
