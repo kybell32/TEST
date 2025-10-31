@@ -91,100 +91,82 @@
 
 <script type="module">
   // ✅ Firebase SDK 불러오기
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-  // ✅ Firebase 설정 (본인 프로젝트 값 그대로 사용)
-  const firebaseConfig = {
-    apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
-    authDomain: "to-be-a-master.firebaseapp.com",
-    projectId: "to-be-a-master",
-    storageBucket: "to-be-a-master.firebasestorage.app",
-    messagingSenderId: "223906864735",
-    appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
-    measurementId: "G-SXF1BMH4DB"
-  };
+const firebaseConfig = { ... };
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-  // ✅ Firebase & Firestore 초기화
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+document.addEventListener('DOMContentLoaded', () => {
+  const PAGE = 3;
+  const NEXT_PAGE_URL = "page4.html";
+  const qs = new URLSearchParams(location.search);
+  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
+  const nextBtn = document.getElementById('nextBtn');
+  const pname = document.getElementById('pname');
+  const qNames = ['q1', 'q2', 'q3', 'q4'];
 
-  document.addEventListener('DOMContentLoaded', () => {
-    const PAGE = 3;
-    const NEXT_PAGE_URL = "page4.html";
-
-    const qs = new URLSearchParams(location.search);
-    const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-    const nextBtn = document.getElementById('nextBtn');
-    const pname = document.getElementById('pname');
-    const qNames = ['q1', 'q2', 'q3', 'q4'];
-
-    function getAnswers() {
-      const out = {};
-      for (const n of qNames) {
-        const v = (document.querySelector(`input[name="${n}"]:checked`) || {}).value || null;
-        out[n] = v;
-      }
-      return out;
+  function getAnswers() {
+    const out = {};
+    for (const n of qNames) {
+      out[n] = (document.querySelector(`input[name="${n}"]:checked`) || {}).value || null;
     }
-
-    function allYes(ans) {
-      return ans.q1 === '예' && ans.q2 === '예' && ans.q3 === '예' && ans.q4 === '예';
-    }
-
-    function syncState() {
-      const ans = getAnswers();
-      nextBtn.disabled = !(allYes(ans) && pname.value.trim());
-    }
-
-    document.querySelectorAll('input[type="radio"]').forEach(el => el.addEventListener('change', syncState));
-    pname.addEventListener('input', syncState);
-
-    // ✅ Firestore에 데이터 저장 함수
-    async function saveToFirestore(data) {
-      try {
-        await addDoc(collection(db, "responses"), data);
-        console.log("✅ Firestore 저장 성공");
-      } catch (e) {
-        console.error("❌ Firestore 저장 실패:", e);
-        throw e;
-      }
-    }
-
-    nextBtn.addEventListener('click', async () => {
-  const ans = getAnswers();
-  if (!allYes(ans)) return;
-  const name = pname.value.trim();
-
-  // 🔹 배열 구조로 저장
-  const answersArray = [
-    { question: "본 연구에 대한 설명 이해", answer: ans.q1 },
-    { question: "연구 위험과 이득 이해", answer: ans.q2 },
-    { question: "연구 참여 철회 가능 이해", answer: ans.q3 },
-    { question: "자발적 참여 의사", answer: ans.q4 },
-    { question: "참여자 성명", answer: name }
-  ];
-
-  const dataToSave = {
-    pid,
-    page: PAGE,
-    answers: answersArray, // 배열 형태
-    timestamp: new Date()
-  };
-
-  nextBtn.disabled = true; // 중복 클릭 방지
-
-  try {
-    await saveToFirestore(dataToSave);
-
-    // 저장 성공 시 다음 페이지로 이동
-    location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-  } catch (e) {
-    console.warn('데이터 저장 실패:', e);
-    alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
-    nextBtn.disabled = false; // 재시도 가능
+    return out;
   }
+
+  function allYes(ans) {
+    return ans.q1 === '예' && ans.q2 === '예' && ans.q3 === '예' && ans.q4 === '예';
+  }
+
+  function syncState() {
+    const ans = getAnswers();
+    nextBtn.disabled = !(allYes(ans) && pname.value.trim());
+  }
+
+  document.querySelectorAll('input[type="radio"]').forEach(el => el.addEventListener('change', syncState));
+  pname.addEventListener('input', syncState);
+
+  async function saveToFirestore(answersArray) {
+    try {
+      const docRef = doc(db, "responses", pid);
+      await setDoc(docRef, {
+        [`page_${PAGE}`]: {
+          answers: answersArray,
+          timestamp: serverTimestamp()
+        }
+      }, { merge: true });
+      console.log(`✅ Firestore 저장 성공 (page ${PAGE})`);
+    } catch (e) {
+      console.error("❌ Firestore 저장 실패:", e);
+      throw e;
+    }
+  }
+
+  nextBtn.addEventListener('click', async () => {
+    const ans = getAnswers();
+    if (!allYes(ans)) return;
+
+    const answersArray = [
+      { question: "본 연구에 대한 설명 이해", answer: ans.q1 },
+      { question: "연구 위험과 이득 이해", answer: ans.q2 },
+      { question: "연구 참여 철회 가능 이해", answer: ans.q3 },
+      { question: "자발적 참여 의사", answer: ans.q4 },
+      { question: "참여자 성명", answer: pname.value.trim() }
+    ];
+
+    nextBtn.disabled = true;
+
+    try {
+      await saveToFirestore(answersArray);
+      location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+    } catch {
+      alert('데이터 저장에 실패했습니다. 다시 시도해주세요.');
+      nextBtn.disabled = false;
+    }
+  });
 });
+
 
 </script>
 
