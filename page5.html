@@ -57,21 +57,30 @@
     const go = document.getElementById('go');
     let sending = false;
 
-    // ✅ Firestore에 메타 데이터 저장
-    async function sessionUpsert() {
-      try {
-        await addDoc(collection(db, "responses"), {
-          pid,
-          page: PAGE,
-          answers: [], // 수집값 없음
-          timestamp: new Date()
-        });
-        console.log("✅ Firestore 저장 완료 (page 5)");
-      } catch (e) {
-        console.error("❌ Firestore 저장 실패:", e);
-        throw e;
+  // ✅ Firestore에 메타 데이터 저장 (배열 포함)
+async function sessionUpsert() {
+  try {
+    const answers = [
+      {
+        action: "read_post",
+        detail: "사용자에게 45초간 게시글 표시 안내",
+        value: null
       }
-    }
+    ];
+
+    await addDoc(collection(db, "responses"), {
+      pid,
+      page: PAGE,
+      answers,        // 배열 형태로 저장
+      timestamp: new Date()
+    });
+
+    console.log("✅ Firestore 저장 완료 (page 5)");
+  } catch (e) {
+    console.error("❌ Firestore 저장 실패:", e);
+    throw e;
+  }
+}
 
     go.addEventListener('click', async ()=>{
       if (sending) return;
