@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>실험 시작</title>
+  <script>
+    (function(){
+      const qs = new URLSearchParams(location.search);
+      let pid = qs.get('pid') || localStorage.getItem('exp_pid');
+
+      // ✅ pid 없으면 새로 만들어서 localStorage에 저장
+      if (!pid) {
+        pid = 'p_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        localStorage.setItem('exp_pid', pid);
+      }
+
+      const next = 'page1.html' + '?pid=' + encodeURIComponent(pid);
+      location.replace(next);
+    })();
+  </script>
+</head>
+<body></body>
+</html>
