@@ -19,107 +19,84 @@
 <div class="popup">
   <h1>전화 번호 뒷자리 4개를 입력해 주세요.</h1>
   <div class="row">
-    <!-- 모바일 입력 편의 + 길이 제한 위해 text + 패턴 사용 -->
-    <input id="idtail" type="text" inputmode="numeric" pattern="\\d{4}" maxlength="4" placeholder="4자리" />
+    <input id="idtail" type="text" inputmode="numeric" pattern="\d{4}" maxlength="4" placeholder="4자리" />
     <button id="submitBtn" disabled>입력</button>
   </div>
   <div class="hint">숫자 4자리만 입력</div>
 </div>
 
-<script>
-/***** ▼ 설정 ▼ *****/
-const API = "https://script.google.com/macros/s/AKfycbxhI7GJJI2jebIWhxr_3nkvvYStEtzNjFZpUuIezsnNKd7G1Mf8emvyrW_AJUsZNg2U/exec";   // 예: https://script.google.com/macros/s/AKf.../exec
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+// Firebase 설정
+const firebaseConfig = {
+  apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
+  authDomain: "to-be-a-master.firebaseapp.com",
+  projectId: "to-be-a-master",
+  storageBucket: "to-be-a-master.firebasestorage.app",
+  messagingSenderId: "223906864735",
+  appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
+  measurementId: "G-SXF1BMH4DB"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 const PAGE = 1;
 const NEXT_PAGE_URL = "page2.html";
-/***** ▲ 설정 끝 ▲ *****/
+const qs = new URLSearchParams(location.search);
+const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
 
-(function(){
-  const qs = new URLSearchParams(location.search);
-  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-  // pid는 index.html에서 생성/전달됨. 여기선 덮어쓰지 않음!
+const idInput = document.getElementById('idtail');
+const submitBtn = document.getElementById('submitBtn');
 
-  const idInput = document.getElementById('idtail');
-  const submitBtn = document.getElementById('submitBtn');
+const isValid = v => /^\d{4}$/.test(v);
 
-  // 입력 검증: 숫자 4자리만
-  const isValid = v => /^\d{4}$/.test(v);
+function syncButton(){
+  submitBtn.disabled = !isValid(idInput.value.trim());
+}
 
-  function syncButton(){
-    submitBtn.disabled = !isValid(idInput.value.trim());
-  }
-  idInput.addEventListener('input', ()=>{
-    // 숫자 이외 문자 제거
-    idInput.value = idInput.value.replace(/\D/g,'').slice(0,4);
-    syncButton();
-  });
+idInput.addEventListener('input', ()=>{
+  idInput.value = idInput.value.replace(/\D/g,'').slice(0,4);
   syncButton();
+});
+syncButton();
 
-  async function upsertSession(idTail){
-    // 페이지 제출 시 한 번만 전송
-    const payload = {
-      type: 'SESSION_UPSERT',
+// Firestore에 answers 배열로 저장
+async function saveToFirestore(idTail){
+  if(!pid) return false;
+  try{
+    await addDoc(collection(db, "responses"), {
       pid,
       page: PAGE,
-      // 스키마: 한 pid=한 행, 문항은 열 키로 저장
       answers: [
         { key: 'P1_IDTAIL', value: idTail }
-      ]
-    };
-    // 심플 요청: text/plain → preflight 없음
-    const res = await fetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload)
+      ],
+      timestamp: new Date()
     });
-    // 실패여도 진행할 건지 판단. 보수적으로 확인:
-    if (!res.ok) {
-      console.warn('SESSION_UPSERT failed (HTTP):', res.status);
-    } else {
-      // Apps Script가 JSON을 돌려줄 때만 의미 있음(생략 가능)
-      try { const j = await res.json(); if (!j.ok) console.warn('SESSION_UPSERT failed (API):', j); } catch(_) {}
-    }
+    console.log("✅ Firestore 저장 완료 (page 1)");
+    return true;
+  }catch(e){
+    console.error("❌ Firestore 저장 실패:", e);
+    return false;
   }
+}
 
-  submitBtn.addEventListener('click', async ()=>{
+submitBtn.addEventListener('click', async ()=>{
   const idTail = idInput.value.trim();
   if (!isValid(idTail)) return;
 
-  submitBtn.disabled = true;  // 중복 클릭 방지
+  submitBtn.disabled = true;
 
-  try {
-    const res = await fetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        type:'SESSION_UPSERT',
-        pid,
-        page: PAGE,
-        answers:[{ key:'P1_IDTAIL', value:idTail }]
-      })
-    });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    // Apps Script에서 JSON 응답 확인 (선택)
-    const data = await res.json().catch(()=>({}));
-    if (data.ok === false) throw new Error('API rejected');
-
-    // 성공하면 다음 페이지 이동
+  const ok = await saveToFirestore(idTail);
+  if(ok){
     location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-
-  } catch (e) {
-    console.warn('데이터 저장 실패:', e);
+  } else {
     alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
-    submitBtn.disabled = false; // 재시도 가능
+    submitBtn.disabled = false;
   }
 });
-
-
-  // (선택) 페이지 로드 이벤트를 남기고 싶다면, SESSION_UPSERT로 메타만 찍을 수도 있음
-  // fetch(API, { method:'POST', headers:{'Content-Type':'text/plain'},
-  //   body: JSON.stringify({ type:'SESSION_UPSERT', pid, page: PAGE, answers: [] })
-  // });
-})();
 </script>
 </body>
 </html>
