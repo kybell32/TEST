@@ -21,57 +21,67 @@
     <p class="muted" id="saveStatus">저장 중…</p>
   </main>
 
-<script>
-/***** ▼ 설정 ▼ *****/
-const API = "https://script.google.com/macros/s/AKfycbxhI7GJJI2jebIWhxr_3nkvvYStEtzNjFZpUuIezsnNKd7G1Mf8emvyrW_AJUsZNg2U/exec";
+<script type="module">
+/***** ▼ Firebase 초기 설정 ▼ *****/
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
+  authDomain: "to-be-a-master.firebaseapp.com",
+  projectId: "to-be-a-master",
+  storageBucket: "to-be-a-master.firebasestorage.app",
+  messagingSenderId: "223906864735",
+  appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
+  measurementId: "G-SXF1BMH4DB"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+/***** ▲ Firebase 설정 끝 ▲*/
+
 const PAGE = 11;
-/***** ▲ 설정 끝 ▲*/
+const qs = new URLSearchParams(location.search);
+const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
+const saveStatus = document.getElementById('saveStatus');
 
-(function(){
-  const qs = new URLSearchParams(location.search);
-  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-  const saveStatus = document.getElementById('saveStatus');
-
-  async function sessionUpsert(answers){
-    const payload = { type:'SESSION_UPSERT', pid, page: PAGE, answers };
-    try{
-      const res = await fetch(API, {
-        method:'POST',
-        headers:{'Content-Type':'text/plain'},
-        body: JSON.stringify(payload)
-      });
-      return res.ok;
-    }catch(e){ console.warn(e); return false; }
+async function saveToFirestore(answers){
+  if(!pid) return;
+  try{
+    await addDoc(collection(db, "responses"), {
+      pid,
+      page: PAGE,
+      answers,
+      timestamp: new Date()
+    });
+    console.log("✅ Firestore 저장 완료 (page 11)");
+    return true;
+  }catch(e){
+    console.error("❌ Firestore 저장 실패:", e);
+    return false;
   }
+}
 
-  async function finalize(){
-    const ok = await sessionUpsert([
-      { key:'P10_COMPLETE', value:'1' },
-      { key:'P10_MESSAGE', value:'연구 종료 안내 표시' },
-      { key:'STUDY_STATUS', value:'complete' }
-    ]);
-    saveStatus.textContent = ok ? '저장 완료' : '저장 실패(네트워크 확인 필요)';
-  }
+async function finalize(){
+  const ok = await saveToFirestore([
+    { key:'P10_COMPLETE', value:'1' },
+    { key:'P10_MESSAGE', value:'연구 종료 안내 표시' },
+    { key:'STUDY_STATUS', value:'complete' }
+  ]);
+  saveStatus.textContent = ok ? '저장 완료' : '저장 실패(네트워크 확인 필요)';
+}
 
-  finalize();
+finalize();
 
-  // 페이지 닫기/새로고침 대비 sendBeacon
-  window.addEventListener('beforeunload', ()=>{
-    try{
-      const payload = JSON.stringify({
-        type:'SESSION_UPSERT',
-        pid,
-        page: PAGE,
-        answers:[
-          { key:'P10_COMPLETE', value:'1' },
-          { key:'P10_MESSAGE', value:'연구 종료 안내 표시' },
-          { key:'STUDY_STATUS', value:'complete' }
-        ]
-      });
-      navigator.sendBeacon(API, new Blob([payload], {type:'text/plain'}));
-    }catch(e){}
-  });
-})();
+// 페이지 닫기/새로고침 대비 안전 저장
+window.addEventListener('beforeunload', ()=>{
+  saveToFirestore([
+    { key:'P10_COMPLETE', value:'1' },
+    { key:'P10_MESSAGE', value:'연구 종료 안내 표시' },
+    { key:'STUDY_STATUS', value:'complete' }
+  ]);
+});
 </script>
+
 </body>
 </html>
