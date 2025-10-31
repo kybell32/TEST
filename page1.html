@@ -19,8 +19,8 @@ body {
   background:#fff;
   border-radius:12px;
   box-shadow:0 4px 20px rgba(0,0,0,.1);
-  padding:24px;
-  max-width:320px;
+  padding:22px;
+  max-width:310px;
   width:100%;
   text-align:center;
 }
@@ -34,8 +34,8 @@ h1 {
   justify-content:center;
 }
 input[type="text"] {
-  width:50px;
-  padding:0.4em;
+  width:60px;
+  padding:0.45em;
   font-size:1em;
   text-align:center;
   box-sizing:border-box;
@@ -44,8 +44,8 @@ input[type="text"] {
   letter-spacing:4px;
 }
 button {
-  width:70px;
-  padding:0.45em 0.5em;
+  width:60px;
+  padding:0.3em 0.5em;
   font-size:1em;
   box-sizing:border-box;
   border:none;
@@ -82,6 +82,7 @@ button {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.23.0/firebase-app.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.23.0/firebase-firestore.js";
 
+// Firebase 초기화
 const firebaseConfig = {
   apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
   authDomain: "to-be-a-master.firebaseapp.com",
@@ -108,20 +109,20 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('exp_pid', pid);
   }
 
-  // 숫자만 입력
+  // 숫자만 입력 제한
   idInput.addEventListener('input', () => {
     idInput.value = idInput.value.replace(/\D/g,'').slice(0,4);
   });
-
   idInput.addEventListener('keypress', e => {
     if (!/[0-9]/.test(e.key)) e.preventDefault();
   });
 
-  // 클릭 이벤트
+  // 클릭 이벤트: 항상 활성화 상태
   submitBtn.addEventListener('click', async () => {
     const idTail = idInput.value.trim();
-    const docRef = doc(db, "sessions", pid);
+
     try {
+      const docRef = doc(db, "sessions", pid);
       await setDoc(docRef, { page_1: { P1_IDTAIL: idTail } }, { merge: true });
       console.log('Firestore 저장 성공');
       location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
