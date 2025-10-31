@@ -5,32 +5,75 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>소셜 미디어 연구_p1</title>
 <style>
-  input[type="number"] {
-    width: 40%; /* 기존보다 좁게 */
-    padding: 0.5em;
-    font-size: 1em;
-    box-sizing: border-box;
+body {
+  margin:0;
+  height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#f6f7f9;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,Arial,sans-serif;
+  color:#111827;
+}
+.popup {
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 4px 20px rgba(0,0,0,.1);
+  padding:24px;
+  max-width:320px;
+  width:100%;
+  text-align:center;
+}
+h1 {
+  font-size:18px;
+  margin:0 0 12px;
+}
+.row {
+  display:flex;
+  gap:8px;
+  justify-content:center;
+}
+input[type="text"] {
+  width:50px;
+  padding:0.4em;
+  font-size:1em;
+  text-align:center;
+  box-sizing:border-box;
+  border:1px solid #ccc;
+  border-radius:8px;
+  letter-spacing:4px;
+}
+button {
+  width:70px;
+  padding:0.45em 0.5em;
+  font-size:1em;
+  box-sizing:border-box;
+  border:none;
+  background:#2563eb;
+  color:#fff;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:600;
+}
+button:disabled {
+  opacity:0.5;
+  cursor:not-allowed;
+}
+.hint {
+  font-size:12px;
+  color:#6b7280;
+  margin-top:8px;
+}
+/* 모바일 대응 */
+@media (max-width:480px) {
+  input[type="text"], button {
+    width:auto;
   }
-
-  button {
-    width: 25%; /* 기존보다 조금 넓게 */
-    padding: 0.5em;
-    font-size: 1em;
-    box-sizing: border-box;
-  }
-
-  /* 모바일 환경 대응 */
-  @media (max-width: 480px) {
-    input[type="number"], button {
-      width: auto; /* 화면 크기에 맞춰 유동적으로 */
-      display: inline-block;
-      margin: 0.2em 0;
-    }
-  }
+}
 </style>
-
 </head>
 <body>
+
 <div class="popup">
   <h1>전화 번호 뒷자리 4개를 입력해 주세요.</h1>
   <div class="row">
@@ -45,6 +88,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.23.0/firebase-app.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.23.0/firebase-firestore.js";
 
+// Firebase 초기화
 const firebaseConfig = {
   apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
   authDomain: "to-be-a-master.firebaseapp.com",
@@ -57,36 +101,55 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const PAGE = 1;
 const NEXT_PAGE_URL = "page2.html";
 
+// PID 확인/생성
 const qs = new URLSearchParams(location.search);
-const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-if (!pid) alert("PID가 없습니다!");
-
-function isValid(v) { return /^\d{4}$/.test(v); }
-
-async function saveToFirestore(pid, idTail) {
-  const docRef = doc(db, "sessions", pid);
-  await setDoc(docRef, { page_1: { P1_IDTAIL: idTail } }, { merge: true });
+let pid = qs.get('pid') || localStorage.getItem('exp_pid');
+if (!pid) {
+  pid = 'p_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  localStorage.setItem('exp_pid', pid);
 }
 
-// DOM 접근
+// 유효성 검사
+function isValid(v) { return /^\d{4}$/.test(v); }
+
+// Firestore 저장
+async function saveToFirestore(pid, idTail) {
+  try {
+    const docRef = doc(db, "sessions", pid);
+    await setDoc(docRef, { page_1: { P1_IDTAIL: idTail } }, { merge: true });
+    console.log('Firestore 저장 성공');
+  } catch (e) {
+    console.error('Firestore 저장 실패:', e);
+    throw e;
+  }
+}
+
+// DOM 요소
 const idInput = document.getElementById('idtail');
 const submitBtn = document.getElementById('submitBtn');
 
+// 버튼 활성화
 function syncButton() {
   submitBtn.disabled = !isValid(idInput.value.trim());
 }
 
+// 숫자만 입력
 idInput.addEventListener('input', () => {
   idInput.value = idInput.value.replace(/\D/g, '').slice(0, 4);
   syncButton();
 });
 
-// 초기 체크
+// 붙여넣기 등 예외 처리
+idInput.addEventListener('keypress', e => {
+  if (!/[0-9]/.test(e.key)) e.preventDefault();
+});
+
+// 초기 상태 체크
 syncButton();
 
+// 클릭 이벤트
 submitBtn.addEventListener('click', async () => {
   const idTail = idInput.value.trim();
   if (!isValid(idTail)) return;
@@ -100,8 +163,8 @@ submitBtn.addEventListener('click', async () => {
     alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
     submitBtn.disabled = false;
   }
-
 });
 </script>
+
 </body>
 </html>
