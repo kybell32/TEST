@@ -45,59 +45,42 @@
 </main>
 
 <script>
-/***** ▼ 설정 ▼ *****/
-const API = "https://script.google.com/macros/s/AKfycbxhI7GJJI2jebIWhxr_3nkvvYStEtzNjFZpUuIezsnNKd7G1Mf8emvyrW_AJUsZNg2U/exec";
-const PAGE = 2;
-const NEXT_PAGE_URL = "page3.html";
-/***** ▲ 설정 끝 ▲*/
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+import { getFirestore, collection, addDoc } from "firebase/firestore"; // ✅ Firestore 추가
 
-(function(){
-  const qs = new URLSearchParams(location.search);
-  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-  const nextBtn = document.getElementById('nextBtn');
-  let sending = false;
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
+  authDomain: "to-be-a-master.firebaseapp.com",
+  projectId: "to-be-a-master",
+  storageBucket: "to-be-a-master.firebasestorage.app",
+  messagingSenderId: "223906864735",
+  appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
+  measurementId: "G-SXF1BMH4DB"
+};
 
-  async function sessionUpsert() {
-    const payload = {
-      type: 'SESSION_UPSERT',
-      pid,
-      page: PAGE,
-      answers: []
-    };
-    try {
-      const res = await fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) console.warn('SESSION_UPSERT failed:', res.status);
-    } catch(e){ console.warn(e); }
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+// ✅ Firestore 초기화
+const db = getFirestore(app);
+
+// ✅ Firestore에 데이터 저장 함수
+export async function saveData(data) {
+  try {
+    await addDoc(collection(db, "responses"), {
+      ...data,
+      timestamp: new Date()
+    });
+    console.log("✅ Firestore에 데이터 저장 성공");
+  } catch (e) {
+    console.error("❌ Firestore 저장 실패:", e);
   }
+}
 
-  nextBtn.addEventListener('click', async () => {
-    if (sending) return;
-    sending = true;
-    nextBtn.disabled = true;
-
-    await sessionUpsert();
-
-    const next = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-    location.href = next;
-  });
-
-  // 페이지 닫기 대비 sendBeacon (optional)
-  window.addEventListener('beforeunload', ()=>{
-    try{
-      const payload = JSON.stringify({
-        type:'SESSION_UPSERT',
-        pid,
-        page: PAGE,
-        answers:[]
-      });
-      navigator.sendBeacon(API, new Blob([payload], {type:'text/plain'}));
-    }catch(e){}
-  });
-})();
 </script>
 </body>
 </html>
