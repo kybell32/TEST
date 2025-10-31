@@ -52,44 +52,41 @@ if (!pid) alert("PID가 없습니다!");
 function isValid(v) { return /^\d{4}$/.test(v); }
 
 async function saveToFirestore(pid, idTail) {
-  try {
-    const docRef = doc(db, "sessions", pid);
-    await setDoc(docRef, { page_1: { P1_IDTAIL: idTail } }, { merge: true });
-  } catch (e) {
-    console.error("Firestore 저장 실패:", e);
-    throw e;
-  }
+  const docRef = doc(db, "sessions", pid);
+  await setDoc(docRef, { page_1: { P1_IDTAIL: idTail } }, { merge: true });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const idInput = document.getElementById('idtail');
-  const submitBtn = document.getElementById('submitBtn');
+// DOM 접근
+const idInput = document.getElementById('idtail');
+const submitBtn = document.getElementById('submitBtn');
 
-  function syncButton() {
-    submitBtn.disabled = !isValid(idInput.value.trim());
-  }
+function syncButton() {
+  submitBtn.disabled = !isValid(idInput.value.trim());
+}
 
-  idInput.addEventListener('input', () => {
-    idInput.value = idInput.value.replace(/\D/g, '').slice(0, 4);
-    syncButton();
-  });
-
+idInput.addEventListener('input', () => {
+  idInput.value = idInput.value.replace(/\D/g, '').slice(0, 4);
   syncButton();
+});
 
-  submitBtn.addEventListener('click', async () => {
-    const idTail = idInput.value.trim();
-    if (!isValid(idTail)) return;
+// 초기 체크
+syncButton();
 
-    submitBtn.disabled = true;
+submitBtn.addEventListener('click', async () => {
+  const idTail = idInput.value.trim();
+  if (!isValid(idTail)) return;
 
-    try {
-      await saveToFirestore(pid, idTail);
-      location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-    } catch {
-      alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
-      submitBtn.disabled = false;
-    }
-  });
+  submitBtn.disabled = true;
+
+  try {
+    await saveToFirestore(pid, idTail);
+    location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+  } catch {
+    alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
+    submitBtn.disabled = false;
+  }
+});
+
 });
 </script>
 </body>
