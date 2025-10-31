@@ -55,130 +55,108 @@
 </main>
 
 <script type="module">
-  /***** ▼ Firebase 초기 설정 ▼ *****/
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
-    authDomain: "to-be-a-master.firebaseapp.com",
-    projectId: "to-be-a-master",
-    storageBucket: "to-be-a-master.firebasestorage.app",
-    messagingSenderId: "223906864735",
-    appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
-    measurementId: "G-SXF1BMH4DB"
+const firebaseConfig = {
+  apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
+  authDomain: "to-be-a-master.firebaseapp.com",
+  projectId: "to-be-a-master",
+  storageBucket: "to-be-a-master.firebasestorage.app",
+  messagingSenderId: "223906864735",
+  appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
+  measurementId: "G-SXF1BMH4DB"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const DURATION_SEC = 45;
+const NEXT_PAGE_URL = "page7.html";
+
+(function(){
+  const qs = new URLSearchParams(location.search);
+  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
+  if (!pid) console.warn("pid가 비어 있습니다. 로그 기록 불가!");
+
+  const stimuli = {
+    A: { key: 'A', title: '정치병자들이 물에 빠졌다.txt', body: `...내용 생략...` },
+    B: { key: 'B', title: '정치병자들은 답이 없다.', body: `...내용 생략...` }
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  /***** ▲ Firebase 설정 끝 ▲ *****/
-
-  /***** ▼ 페이지 설정 ▼ *****/
-  const DURATION_SEC = 45;
-  const NEXT_PAGE_URL = "page7.html";
-  /***** ▲ 설정 끝 ▲ *****/
-
-  (function(){
-    const qs = new URLSearchParams(location.search);
-    const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-    if (!pid) console.warn("pid가 비어 있습니다. 로그 기록 불가!");
-
-    // 자극 텍스트 (A/B)
-    const stimuli = {
-      A: { key: 'A', title: '정치병자들이 물에 빠졌다.txt', body: `...내용 생략...` },
-      B: { key: 'B', title: '정치병자들은 답이 없다.', body: `...내용 생략...` }
-    };
-
-    // 1) 자극 배정
-    let variantKey = localStorage.getItem('stimulus_variant');
-    if (!variantKey) {
-      variantKey = Math.random() < 0.7 ? 'A' : 'B';
-      localStorage.setItem('stimulus_variant', variantKey);
-    }
-    const variant = stimuli[variantKey];
-
-    // 2) 화면 반영
-    document.getElementById('title').textContent = variant.title;
-    document.getElementById('body').textContent = variant.body;
-
-    // 3) 노출 지표(가짜)
-    const counts = (() => {
-      const save = 30 + Math.floor(Math.random()*71);
-      const comment = save + 20 + Math.floor(Math.random()*181);
-      const like = comment + 50 + Math.floor(Math.random()*601);
-      const share = Math.min(2000, like + 100 + Math.floor(Math.random()*901));
-      return {share, like, comment, save};
-    })();
-    document.getElementById('shareCnt').textContent = counts.share.toLocaleString();
-    document.getElementById('likeCnt').textContent = counts.like.toLocaleString();
-    document.getElementById('commentCnt').textContent = counts.comment.toLocaleString();
-    document.getElementById('saveCnt').textContent = counts.save.toLocaleString();
-
-    // ✅ Firestore에 variant 기록
-    async function saveVariant() {
-      if (!pid) return;
-      try {
-        await addDoc(collection(db, "responses"), {
-          pid,
-          page: 6,
-          answers: [{ key: 'P5_VARIANT', value: variant.key }],
-          timestamp: new Date()
-        });
-        console.log("✅ Firestore 저장 완료 (variant)");
-      } catch (e) {
-        console.warn("❌ Firestore 저장 실패:", e);
-      }
-    }
-
-    // 안전한 redirect
-    // ✅ Firestore에 variant 기록 (배열 구조)
-async function saveVariant() {
-  if (!pid) return;
-  try {
-    const answers = [
-      {
-        key: 'P5_VARIANT',
-        value: variant.key,
-        detail: `노출 자극 ${variant.key} (${variant.title})`
-      }
-    ];
-
-    await addDoc(collection(db, "responses"), {
-      pid,
-      page: 5,       // 페이지 번호 p.5
-      answers,       // 배열 형태
-      timestamp: new Date()
-    });
-
-    console.log("✅ Firestore 저장 완료 (page 5, variant)");
-  } catch (e) {
-    console.warn("❌ Firestore 저장 실패:", e);
+  let variantKey = localStorage.getItem('stimulus_variant');
+  if (!variantKey) {
+    variantKey = Math.random() < 0.7 ? 'A' : 'B';
+    localStorage.setItem('stimulus_variant', variantKey);
   }
-}
+  const variant = stimuli[variantKey];
 
+  document.getElementById('title').textContent = variant.title;
+  document.getElementById('body').textContent = variant.body;
 
-    // 45초 타이머
-    const secEl = document.getElementById('sec');
-    const barEl = document.getElementById('bar');
-    let left = DURATION_SEC;
-    secEl.textContent = left;
-    barEl.style.width = '0%';
-
-    const tick = setInterval(()=>{
-      left = Math.max(0, left - 1);
-      secEl.textContent = left;
-      barEl.style.width = ((DURATION_SEC - left)/DURATION_SEC)*100 + '%';
-      if (left === 0) {
-        clearInterval(tick);
-        logVariantAndRedirect();
-      }
-    }, 1000);
-
-    // 혹시 45초 초과 안전장치
-    setTimeout(logVariantAndRedirect, DURATION_SEC*1000 + 500);
-
+  const counts = (() => {
+    const save = 30 + Math.floor(Math.random()*71);
+    const comment = save + 20 + Math.floor(Math.random()*181);
+    const like = comment + 50 + Math.floor(Math.random()*601);
+    const share = Math.min(2000, like + 100 + Math.floor(Math.random()*901));
+    return {share, like, comment, save};
   })();
+  document.getElementById('shareCnt').textContent = counts.share.toLocaleString();
+  document.getElementById('likeCnt').textContent = counts.like.toLocaleString();
+  document.getElementById('commentCnt').textContent = counts.comment.toLocaleString();
+  document.getElementById('saveCnt').textContent = counts.save.toLocaleString();
+
+  let saved = false;
+
+  async function saveVariant() {
+    if (!pid || saved) return;
+    try {
+      const answers = [
+        {
+          key: 'P6_VARIANT',
+          value: variant.key,
+          detail: `노출 자극 ${variant.key} (${variant.title})`
+        }
+      ];
+      const docRef = doc(db, "responses", pid);
+      await setDoc(docRef, {
+        page_6: { answers, timestamp: serverTimestamp() }
+      }, { merge: true });
+      console.log("✅ Firestore 저장 완료 (page 6)");
+      saved = true;
+    } catch(e) {
+      console.error("❌ Firestore 저장 실패:", e);
+    }
+  }
+
+  function redirectNext() {
+    saveVariant().finally(()=>{
+      const next = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+      location.href = next;
+    });
+  }
+
+  const secEl = document.getElementById('sec');
+  const barEl = document.getElementById('bar');
+  let left = DURATION_SEC;
+  secEl.textContent = left;
+  barEl.style.width = '0%';
+
+  const tick = setInterval(()=>{
+    left = Math.max(0, left-1);
+    secEl.textContent = left;
+    barEl.style.width = ((DURATION_SEC-left)/DURATION_SEC)*100 + '%';
+    if(left===0){
+      clearInterval(tick);
+      redirectNext();
+    }
+  },1000);
+
+  // 안전장치
+  setTimeout(redirectNext, DURATION_SEC*1000 + 500);
+})();
 </script>
+
 
 </body>
 </html>
