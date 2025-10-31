@@ -137,12 +137,38 @@ const STIM_KEY = "P9_POST_1";    // 분석용 식별자
 const text = `마지막 자극 텍스트 예시입니다.
 여기 내용을 페이지에 보여주고 사용자의 반응을 Firestore에 기록합니다.`;
 
-(function(){
+// DOM 완전히 로드 후 실행
+document.addEventListener('DOMContentLoaded', () => {
+
+  // 1️⃣ 문항 숫자 버튼 생성
+  document.querySelectorAll('.scale').forEach(scale => {
+    for(let i=1; i<=7; i++){
+      const label = document.createElement('label');
+      label.className = 'chip';
+      label.innerHTML = `<strong>${i}</strong><input type="radio" name="${scale.dataset.name}" value="${i}">`;
+      label.querySelector('input').addEventListener('change', checkAllAnswered);
+      scale.appendChild(label);
+    }
+  });
+
+  // 2️⃣ 선택 체크 & 다음 버튼 활성화
+  function checkAllAnswered(){
+    const allAnswered = Array.from(document.querySelectorAll('.scale')).every(scale =>
+      scale.querySelector('input:checked')
+    );
+    document.getElementById('nextBtn').disabled = !allAnswered;
+
+    document.querySelectorAll('label.chip').forEach(l => {
+      l.classList.toggle('selected', l.querySelector('input').checked);
+    });
+  }
+
+  // 3️⃣ PID 확인
   const qs = new URLSearchParams(location.search);
   const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-  document.getElementById('body').textContent = text;
+  if(document.getElementById('body')) document.getElementById('body').textContent = text;
 
-  // 더미 지표
+  // 4️⃣ 더미 지표
   const counts = (() => {
     const save = 20 + Math.floor(Math.random()*20);
     const comment = save + Math.floor(Math.random()*80);
@@ -150,12 +176,12 @@ const text = `마지막 자극 텍스트 예시입니다.
     const share = Math.min(2000, like + Math.floor(Math.random()*400));
     return {share, like, comment, save};
   })();
-  document.getElementById('shareCnt').textContent = counts.share.toLocaleString();
-  document.getElementById('likeCnt').textContent = counts.like.toLocaleString();
-  document.getElementById('commentCnt').textContent = counts.comment.toLocaleString();
-  document.getElementById('saveCnt').textContent = counts.save.toLocaleString();
+  if(document.getElementById('shareCnt')) document.getElementById('shareCnt').textContent = counts.share.toLocaleString();
+  if(document.getElementById('likeCnt')) document.getElementById('likeCnt').textContent = counts.like.toLocaleString();
+  if(document.getElementById('commentCnt')) document.getElementById('commentCnt').textContent = counts.comment.toLocaleString();
+  if(document.getElementById('saveCnt')) document.getElementById('saveCnt').textContent = counts.save.toLocaleString();
 
-  // Firestore 저장
+  // 5️⃣ Firestore 저장 함수
   async function saveToFirestore(answers){
     if(!pid) return;
     try{
@@ -171,25 +197,25 @@ const text = `마지막 자극 텍스트 예시입니다.
     }
   }
 
-  // 페이지 노출 기록
+  // 6️⃣ 페이지 노출 기록
   saveToFirestore([
     { key: 'P9_STIM_KEY', value: STIM_KEY },
     { key: 'P9_SHOWN_MS', value: String(DISPLAY_MS) }
   ]);
 
-  // 진행바 및 타이머
+  // 7️⃣ 진행바 & 타이머
   const bar = document.getElementById('bar');
   let elapsed = 0;
   const interval = setInterval(()=>{
     elapsed += 1000;
-    bar.style.width = Math.min(100, (elapsed / DISPLAY_MS) * 100) + "%";
+    if(bar) bar.style.width = Math.min(100, (elapsed / DISPLAY_MS) * 100) + "%";
     if (elapsed >= DISPLAY_MS) {
       clearInterval(interval);
       redirect();
     }
   }, 1000);
 
-  // 안전한 리디렉션
+  // 8️⃣ 안전한 리디렉션
   async function redirect(){
     try{
       await saveToFirestore([]);
@@ -199,8 +225,9 @@ const text = `마지막 자극 텍스트 예시입니다.
     location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
   }
 
-})();
+});
 </script>
+
 
 </body>
 </html>
