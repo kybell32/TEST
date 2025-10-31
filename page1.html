@@ -55,10 +55,6 @@ button {
   cursor:pointer;
   font-weight:600;
 }
-button:disabled {
-  opacity:0.5;
-  cursor:not-allowed;
-}
 .hint {
   font-size:12px;
   color:#6b7280;
@@ -75,8 +71,8 @@ button:disabled {
 <div class="popup">
   <h1>전화 번호 뒷자리 4개를 입력해 주세요.</h1>
   <div class="row">
-    <input id="idtail" type="text" inputmode="numeric" pattern="\d*" maxlength="4" placeholder="4자리" />
-    <button id="submitBtn" disabled>입력</button>
+    <input id="idtail" type="text" inputmode="numeric" maxlength="4" placeholder="4자리" />
+    <button id="submitBtn">입력</button>
   </div>
   <div class="hint">번호를 잘 확인해 주세요.</div>
 </div>
@@ -100,7 +96,6 @@ const db = getFirestore(app);
 
 const NEXT_PAGE_URL = "page2.html";
 
-// DOM 준비 후 실행
 document.addEventListener('DOMContentLoaded', () => {
   const idInput = document.getElementById('idtail');
   const submitBtn = document.getElementById('submitBtn');
@@ -113,41 +108,26 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('exp_pid', pid);
   }
 
-  // 버튼 활성화 함수
-  function updateButton() {
-    let v = idInput.value.replace(/\D/g,'').slice(0,4);
-    idInput.value = v;
-    submitBtn.disabled = v.length !== 4;
-  }
+  // 숫자만 입력
+  idInput.addEventListener('input', () => {
+    idInput.value = idInput.value.replace(/\D/g,'').slice(0,4);
+  });
 
-  // 숫자 입력 이벤트
-  idInput.addEventListener('input', updateButton);
-  idInput.addEventListener('keyup', updateButton);
-
-  // 붙여넣기/IME 대비 keypress 제한
   idInput.addEventListener('keypress', e => {
     if (!/[0-9]/.test(e.key)) e.preventDefault();
   });
 
-  // 초기 체크
-  updateButton();
-
   // 클릭 이벤트
   submitBtn.addEventListener('click', async () => {
     const idTail = idInput.value.trim();
-    if (idTail.length !== 4) return;
-
-    submitBtn.disabled = true;
-
+    const docRef = doc(db, "sessions", pid);
     try {
-      const docRef = doc(db, "sessions", pid);
       await setDoc(docRef, { page_1: { P1_IDTAIL: idTail } }, { merge: true });
       console.log('Firestore 저장 성공');
       location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
     } catch (e) {
       console.error('Firestore 저장 실패:', e);
       alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
-      submitBtn.disabled = false;
     }
   });
 });
