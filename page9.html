@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>소셜 미디어 연구_p8</title>
+<style>
+  :root{--line:#e5e7eb;--pri:#2563eb}
+  body{margin:0;background:#f6f7f9;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,Arial,sans-serif;color:#111827}
+  .container{max-width:720px;margin:20px auto;padding:0 16px}
+  .notice{margin-bottom:16px;font-size:18px;font-weight:600;text-align:center}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.05);padding:16px}
+  .profile{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .avatar{width:40px;height:40px;border-radius:50%;background:#d1d5db;display:flex;align-items:center;justify-content:center;font-weight:700;color:#374151}
+  .author{font-size:14px;font-weight:600;color:#111827}
+  .title{font-weight:700;font-size:18px;margin-bottom:10px}
+  .content{white-space:pre-line;line-height:1.6;font-size:15px}
+  .stats{display:flex;gap:16px;align-items:center;color:#374151;margin-top:12px;font-size:14px}
+  .progress{height:6px;background:#e5e7eb;border-radius:4px;margin-top:20px;overflow:hidden}
+  .bar{height:100%;width:0;background:var(--pri);transition:width 1s linear}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="notice">45초 동안 아래 게시물을 읽은 후 다음 질문에 답해 주십시오.</div>
+  <div class="card">
+    <div class="profile">
+      <div class="avatar">A</div>
+      <div class="author">익명</div>
+    </div>
+    <div class="title">정신질환자들은 사회에 필요 없다.</div>
+    <div id="body" class="content"></div>
+    <div class="stats">
+      <div>공유 <strong id="shareCnt">0</strong></div>
+      <div>좋아요 <strong id="likeCnt">0</strong></div>
+      <div>댓글 <strong id="commentCnt">0</strong></div>
+      <div>저장 <strong id="saveCnt">0</strong></div>
+    </div>
+    <div class="progress"><div id="bar" class="bar"></div></div>
+  </div>
+</div>
+
+<script>
+/***** ▼ 설정 ▼ *****/
+const API = "https://script.google.com/macros/s/AKfycbxhI7GJJI2jebIWhxr_3nkvvYStEtzNjFZpUuIezsnNKd7G1Mf8emvyrW_AJUsZNg2U/exec";
+const PAGE = 9;
+const NEXT_PAGE_URL = "page10.html";
+const DISPLAY_MS = 45000; // 45초
+const STIM_KEY = "P8_POST_1"; // 분석용 식별자
+/***** ▲ 설정 끝 ▲ *****/
+
+const text = `정신질환자들은 솔직히 사회에서는 짐이지.
+약 먹으면서도 일도 제대로 못하고, 주변 사람까지 힘들게 만드니까.
+
+요즘은 조금만 힘들어도 다들 정신병이라고 우기는데
+그건 핑계고, 솔직히 진짜 정신병은 심각하잖아.
+
+더 문제는 사회에서 이런 사람들 배려한다고
+세금 쏟아 가면서 일 하게 만들려는데 굳이 그래야 해?
+
+범죄나 문제 일으키는 게 일상 다반사고
+주변 사람들한테 피해만 주잖아.
+아무리 본인이 원하지 않아도 피해를 주는데 어떻게 해서라도 병동 입원시켜야지.`;
+
+(function(){
+  const qs = new URLSearchParams(location.search);
+  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
+  document.getElementById('body').textContent = text;
+
+  // 더미 지표
+  const counts = (() => {
+    const save = 30 + Math.floor(Math.random()*21);
+    const comment = save + Math.floor(Math.random()*100);
+    const like = comment + Math.floor(Math.random()*300);
+    const share = Math.min(2000, like + Math.floor(Math.random()*500));
+    return {share, like, comment, save};
+  })();
+  document.getElementById('shareCnt').textContent = counts.share.toLocaleString();
+  document.getElementById('likeCnt').textContent = counts.like.toLocaleString();
+  document.getElementById('commentCnt').textContent = counts.comment.toLocaleString();
+  document.getElementById('saveCnt').textContent = counts.save.toLocaleString();
+
+  // 페이지 노출 기록
+  sessionUpsert([
+    { key: 'P8_STIM_KEY', value: STIM_KEY },
+    { key: 'P8_SHOWN_MS', value: String(DISPLAY_MS) }
+  ]).catch(console.warn);
+
+  // 진행바 및 타이머
+  const bar = document.getElementById('bar');
+  let elapsed = 0;
+  const interval = setInterval(()=>{
+    elapsed += 1000;
+    bar.style.width = Math.min(100, (elapsed / DISPLAY_MS) * 100) + "%";
+    if (elapsed >= DISPLAY_MS) {
+      clearInterval(interval);
+      redirect();
+    }
+  }, 1000);
+
+  // 안전한 리디렉션 함수
+  async function redirect(){
+    try {
+      // 업서트 후 0.2초 대기
+      await sessionUpsert([]);
+      await new Promise(r => setTimeout(r, 200));
+    } catch(e){ console.warn(e); }
+
+    const next = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+    location.href = next;
+  }
+
+  // 공통 업서트 함수
+  async function sessionUpsert(answers){
+    const payload = { type:'SESSION_UPSERT', pid, page: PAGE, answers };
+    await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type':'text/plain' },
+      body: JSON.stringify(payload)
+    });
+  }
+
+  // 페이지 종료 대비 sendBeacon 백업
+  window.addEventListener('beforeunload', () => {
+    try {
+      const payload = JSON.stringify({ type:'SESSION_UPSERT', pid, page: PAGE, answers: [] });
+      navigator.sendBeacon(API, new Blob([payload], { type:'text/plain' }));
+    } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>
