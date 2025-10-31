@@ -3,17 +3,61 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>소셜 미디어 연구_p1 </title>
+<title>소셜 미디어 연구_p1</title>
 <style>
-  body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#f6f7f9;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,Arial,sans-serif;color:#111827}
-  .popup{background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1);padding:24px;max-width:320px;width:100%;text-align:center}
-  h1{font-size:18px;margin:0 0 12px}
-  .row{display:flex;gap:8px;justify-content:center}
-  input[type="text"]{flex:1;padding:10px;font-size:18px;text-align:center;border:1px solid #ccc;border-radius:8px;letter-spacing:4px}
-  button{border:none;background:#2563eb;color:#fff;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600}
-  button:disabled{opacity:.5;cursor:not-allowed}
-  .hint{font-size:12px;color:#6b7280;margin-top:8px}
+  body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f6f7f9;
+    font-family: system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,Arial,sans-serif;
+    color: #111827;
+  }
+  .popup {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.1);
+    padding: 24px;
+    max-width: 320px;
+    width: 100%;
+    text-align: center;
+  }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  .row { display: flex; gap: 8px; justify-content: center; }
+  input[type="text"] {
+    flex: 1;
+    padding: 10px;
+    font-size: 18px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    letter-spacing: 4px;
+  }
+  button {
+    border: none;
+    background: #2563eb;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .hint { font-size: 12px; color: #6b7280; margin-top: 8px; }
 </style>
+</head>
+<body>
+<div class="popup">
+  <h1>전화 번호 뒷자리 4개를 입력해 주세요.</h1>
+  <div class="row">
+    <input id="idtail" type="text" inputmode="numeric" maxlength="4" placeholder="4자리" />
+    <button id="submitBtn" disabled>입력</button>
+  </div>
+  <div class="hint">번호를 잘 확인해 주세요.</div>
+</div>
+
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.23.0/firebase-app.js";
@@ -21,14 +65,14 @@
 
   // ===== Firebase 설정 =====
   const firebaseConfig = {
-  apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
-  authDomain: "to-be-a-master.firebaseapp.com",
-  projectId: "to-be-a-master",
-  storageBucket: "to-be-a-master.firebasestorage.app",
-  messagingSenderId: "223906864735",
-  appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
-  measurementId: "G-SXF1BMH4DB"
-};
+    apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
+    authDomain: "to-be-a-master.firebaseapp.com",
+    projectId: "to-be-a-master",
+    storageBucket: "to-be-a-master.firebasestorage.app",
+    messagingSenderId: "223906864735",
+    appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
+    measurementId: "G-SXF1BMH4DB"
+  };
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
@@ -40,57 +84,48 @@
   const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
   if (!pid) alert("PID가 없습니다!");
 
-  const idInput = document.getElementById('idtail');
-  const submitBtn = document.getElementById('submitBtn');
+  function isValid(v) { return /^\d{4}$/.test(v); }
 
-  const isValid = v => /^\d{4}$/.test(v);
-
-  function syncButton(){
-    submitBtn.disabled = !isValid(idInput.value.trim());
-  }
-
-  idInput.addEventListener('input', ()=>{
-    idInput.value = idInput.value.replace(/\D/g,'').slice(0,4);
-    syncButton();
-  });
-  syncButton();
-
-  async function saveToFirestore(pid, idTail){
-  try {
-    const docRef = doc(db, "sessions", pid); // 문서 ID = pid
-    await setDoc(docRef, { page_1: { P1_IDTAIL: idTail } }, { merge: true });
-  } catch (e) {
-    console.error("Firestore 저장 실패:", e);
-    throw e;
-  }
-}
-
-
-  submitBtn.addEventListener('click', async ()=>{
-    const idTail = idInput.value.trim();
-    if (!isValid(idTail)) return;
-
-    submitBtn.disabled = true; // 중복 클릭 방지
-
+  async function saveToFirestore(pid, idTail) {
     try {
-      await saveToFirestore(pid, idTail);
-      // 성공하면 다음 페이지 이동
-      location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-    } catch {
-      alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
-      submitBtn.disabled = false; // 재시도 가능
+      const docRef = doc(db, "sessions", pid);
+      await setDoc(docRef, { page_1: { P1_IDTAIL: idTail } }, { merge: true });
+    } catch (e) {
+      console.error("Firestore 저장 실패:", e);
+      throw e;
     }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const idInput = document.getElementById('idtail');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function syncButton() {
+      submitBtn.disabled = !isValid(idInput.value.trim());
+    }
+
+    idInput.addEventListener('input', () => {
+      idInput.value = idInput.value.replace(/\D/g, '').slice(0, 4);
+      syncButton();
+    });
+
+    syncButton();
+
+    submitBtn.addEventListener('click', async () => {
+      const idTail = idInput.value.trim();
+      if (!isValid(idTail)) return;
+
+      submitBtn.disabled = true;
+
+      try {
+        await saveToFirestore(pid, idTail);
+        location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+      } catch {
+        alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
+        submitBtn.disabled = false;
+      }
+    });
   });
 </script>
-</head>
-<body>
-<div class="popup">
-  <h1>전화 번호 뒷자리 4개를 입력해 주세요.</h1>
-  <div class="row">
-    <input id="idtail" type="text" inputmode="numeric" maxlength="4" placeholder="4자리" />
-    <button id="submitBtn" disabled>입력</button>
-  </div>
-  <div class="hint">번호를 잘 확인해 주세요.</div>
-</div>
 </body>
 </html>
