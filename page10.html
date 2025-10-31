@@ -110,92 +110,97 @@
   </div>
 </main>
 
-<script>
-/***** ▼ 설정 ▼ *****/
-const API = "https://script.google.com/macros/s/AKfycbxhI7GJJI2jebIWhxr_3nkvvYStEtzNjFZpUuIezsnNKd7G1Mf8emvyrW_AJUsZNg2U/exec";
-const PAGE = 10;
-const NEXT_PAGE_URL = "page11.html";
-/***** ▲ 설정 끝 ▲ *****/
+<script type="module">
+/***** ▼ Firebase 초기 설정 ▼ *****/
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
+  authDomain: "to-be-a-master.firebaseapp.com",
+  projectId: "to-be-a-master",
+  storageBucket: "to-be-a-master.firebasestorage.app",
+  messagingSenderId: "223906864735",
+  appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
+  measurementId: "G-SXF1BMH4DB"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+/***** ▲ Firebase 설정 끝 ▲*/
+
+const PAGE = 10;               // 페이지 번호
+const NEXT_PAGE_URL = "end.html"; // 다음 페이지
+const DISPLAY_MS = 30000;        // 30초 예시
+const STIM_KEY = "P9_POST_1";    // 분석용 식별자
+
+const text = `마지막 자극 텍스트 예시입니다.
+여기 내용을 페이지에 보여주고 사용자의 반응을 Firestore에 기록합니다.`;
 
 (function(){
   const qs = new URLSearchParams(location.search);
   const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-  const nextBtn = document.getElementById('nextBtn');
-  let sending = false;
+  document.getElementById('body').textContent = text;
 
-  // 1) 1~7 칩 생성
-  document.querySelectorAll('.scale').forEach(scale=>{
-    const name = scale.dataset.name;
-    for(let v=1; v<=7; v++){
-      const lab = document.createElement('label');
-      lab.className = 'chip';
-      lab.innerHTML = `<input type="radio" name="${name}" value="${v}"><strong>${v}</strong>`;
-      scale.appendChild(lab);
+  // 더미 지표
+  const counts = (() => {
+    const save = 20 + Math.floor(Math.random()*20);
+    const comment = save + Math.floor(Math.random()*80);
+    const like = comment + Math.floor(Math.random()*200);
+    const share = Math.min(2000, like + Math.floor(Math.random()*400));
+    return {share, like, comment, save};
+  })();
+  document.getElementById('shareCnt').textContent = counts.share.toLocaleString();
+  document.getElementById('likeCnt').textContent = counts.like.toLocaleString();
+  document.getElementById('commentCnt').textContent = counts.comment.toLocaleString();
+  document.getElementById('saveCnt').textContent = counts.save.toLocaleString();
+
+  // Firestore 저장
+  async function saveToFirestore(answers){
+    if(!pid) return;
+    try{
+      await addDoc(collection(db, "responses"), {
+        pid,
+        page: PAGE,
+        answers,
+        timestamp: new Date()
+      });
+      console.log("✅ Firestore 저장 완료 (page 10)");
+    }catch(e){
+      console.error("❌ Firestore 저장 실패:", e);
     }
-  });
-
-  // 2) 칩 선택 시 시각 상태(.selected) 토글
-  function refreshGroup(name){
-    document.querySelectorAll(`label.chip input[name="${name}"]`).forEach(r=>{
-      const lab = r.closest('label.chip');
-      if (!lab) return;
-      lab.classList.toggle('selected', r.checked);
-    });
-  }
-  function wireChipSelection(){
-    document.querySelectorAll('label.chip > input[type="radio"]').forEach(r=>{
-      refreshGroup(r.name); // 초기 반영
-      r.addEventListener('change', ()=>refreshGroup(r.name));
-    });
-  }
-  wireChipSelection();
-
-  // 3) 완료 체크
-  const REQUIRED = ['s1_q1','s1_q2','s1_q3','s2_q1','s2_q2','s2_q3'];
-  function answeredAll(){
-    return REQUIRED.every(n => document.querySelector(`input[name="${n}"]:checked`));
-  }
-  function refreshBtn(){ nextBtn.disabled = !answeredAll() || sending; }
-
-  // 변경 감지
-  document.addEventListener('change', (e)=>{
-    if (e.target && e.target.matches('input[type="radio"]')) refreshBtn();
-  });
-  refreshBtn();
-
-  // 4) 수집/업서트/이동
-  function collectAnswers(){
-    const out = [];
-    document.querySelectorAll('.scale').forEach(scale=>{
-      const name = scale.dataset.name;
-      const key  = scale.dataset.qkey;
-      const el   = document.querySelector(`input[name="${name}"]:checked`);
-      if (el) out.push({ key, value: el.value });
-    });
-    return out;
   }
 
-  async function sessionUpsert(answers){
-    const payload = { type:'SESSION_UPSERT', pid, page: PAGE, answers };
-    const res = await fetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type':'text/plain' }, // 심플 요청(프리플라이트 방지)
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) console.warn('SESSION_UPSERT failed:', res.status);
+  // 페이지 노출 기록
+  saveToFirestore([
+    { key: 'P9_STIM_KEY', value: STIM_KEY },
+    { key: 'P9_SHOWN_MS', value: String(DISPLAY_MS) }
+  ]);
+
+  // 진행바 및 타이머
+  const bar = document.getElementById('bar');
+  let elapsed = 0;
+  const interval = setInterval(()=>{
+    elapsed += 1000;
+    bar.style.width = Math.min(100, (elapsed / DISPLAY_MS) * 100) + "%";
+    if (elapsed >= DISPLAY_MS) {
+      clearInterval(interval);
+      redirect();
+    }
+  }, 1000);
+
+  // 안전한 리디렉션
+  async function redirect(){
+    try{
+      await saveToFirestore([]);
+      await new Promise(r => setTimeout(r, 200));
+    }catch(e){ console.warn(e); }
+
+    location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
   }
 
-  nextBtn.addEventListener('click', async ()=>{
-    if (!answeredAll() || sending) return;
-    sending = true; refreshBtn();
-
-    const answers = collectAnswers(); // [{key:'P9_S1_Q1', value:'...'}, ...]
-    try { await sessionUpsert(answers); } catch(e) { console.warn(e); }
-
-    const next = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-    location.href = next;
-  });
 })();
 </script>
+
 </body>
 </html>
