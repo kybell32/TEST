@@ -23,7 +23,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
@@ -43,23 +43,20 @@ const qs = new URLSearchParams(location.search);
 const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
 const saveStatus = document.getElementById('saveStatus');
 
-/**
- * Firestore에 answers 배열 형태로 저장
- * @param {Array<{key:string,value:string}>} answers 
- */
 async function saveToFirestore(answers){
   if(!pid) return false;
   try{
-    await addDoc(collection(db, "responses"), {
-      pid,
-      page: PAGE,
-      answers,      // 배열 형태로 저장
-      timestamp: new Date()
-    });
-    console.log("✅ Firestore 저장 완료 (page 11)");
+    const docRef = doc(db, "responses", pid);
+    await setDoc(docRef, {
+      [`page_${PAGE}`]: {
+        answers,
+        timestamp: serverTimestamp()
+      }
+    }, { merge: true });
+    console.log(`✅ Firestore 저장 완료 (page ${PAGE})`);
     return true;
   }catch(e){
-    console.error("❌ Firestore 저장 실패:", e);
+    console.error(`❌ Firestore 저장 실패 (page ${PAGE}):`, e);
     return false;
   }
 }
@@ -86,6 +83,7 @@ window.addEventListener('beforeunload', ()=>{
   ]);
 });
 </script>
+
 
 </body>
 </html>
