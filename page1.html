@@ -14,23 +14,13 @@
   button:disabled{opacity:.5;cursor:not-allowed}
   .hint{font-size:12px;color:#6b7280;margin-top:8px}
 </style>
-</head>
-<body>
-<div class="popup">
-  <h1>전화 번호 뒷자리 4개를 입력해 주세요.</h1>
-  <div class="row">
-    <input id="idtail" type="text" inputmode="numeric" pattern="\d{4}" maxlength="4" placeholder="4자리" />
-    <button id="submitBtn" disabled>입력</button>
-  </div>
-  <div class="hint">숫자 4자리만 입력</div>
-</div>
-
+<!-- Firebase SDK -->
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.23.0/firebase-app.js";
+  import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.23.0/firebase-firestore.js";
 
-// Firebase 설정
-const firebaseConfig = {
+  // ===== Firebase 설정 =====
+  const firebaseConfig = {
   apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
   authDomain: "to-be-a-master.firebaseapp.com",
   projectId: "to-be-a-master",
@@ -39,64 +29,67 @@ const firebaseConfig = {
   appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
   measurementId: "G-SXF1BMH4DB"
 };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+  // ===== 페이지 설정 =====
+  const PAGE = 1;
+  const NEXT_PAGE_URL = "page2.html";
 
-const PAGE = 1;
-const NEXT_PAGE_URL = "page2.html";
-const qs = new URLSearchParams(location.search);
-const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
+  const qs = new URLSearchParams(location.search);
+  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
+  if (!pid) alert("PID가 없습니다!");
 
-const idInput = document.getElementById('idtail');
-const submitBtn = document.getElementById('submitBtn');
+  const idInput = document.getElementById('idtail');
+  const submitBtn = document.getElementById('submitBtn');
 
-const isValid = v => /^\d{4}$/.test(v);
+  const isValid = v => /^\d{4}$/.test(v);
 
-function syncButton(){
-  submitBtn.disabled = !isValid(idInput.value.trim());
-}
+  function syncButton(){
+    submitBtn.disabled = !isValid(idInput.value.trim());
+  }
 
-idInput.addEventListener('input', ()=>{
-  idInput.value = idInput.value.replace(/\D/g,'').slice(0,4);
+  idInput.addEventListener('input', ()=>{
+    idInput.value = idInput.value.replace(/\D/g,'').slice(0,4);
+    syncButton();
+  });
   syncButton();
-});
-syncButton();
 
-// Firestore에 answers 배열로 저장
-async function saveToFirestore(idTail){
-  if(!pid) return false;
-  try{
-    await addDoc(collection(db, "responses"), {
-      pid,
-      page: PAGE,
-      answers: [
-        { key: 'P1_IDTAIL', value: idTail }
-      ],
-      timestamp: new Date()
-    });
-    console.log("✅ Firestore 저장 완료 (page 1)");
-    return true;
-  }catch(e){
-    console.error("❌ Firestore 저장 실패:", e);
-    return false;
+  async function saveToFirestore(pid, idTail){
+    try {
+      const docRef = doc(db, "sessions", pid); // sessions 컬렉션, 문서 ID = pid
+      await setDoc(docRef, { page: PAGE, P1_IDTAIL: idTail }, { merge: true });
+    } catch (e) {
+      console.error("Firestore 저장 실패:", e);
+      throw e;
+    }
   }
-}
 
-submitBtn.addEventListener('click', async ()=>{
-  const idTail = idInput.value.trim();
-  if (!isValid(idTail)) return;
+  submitBtn.addEventListener('click', async ()=>{
+    const idTail = idInput.value.trim();
+    if (!isValid(idTail)) return;
 
-  submitBtn.disabled = true;
+    submitBtn.disabled = true; // 중복 클릭 방지
 
-  const ok = await saveToFirestore(idTail);
-  if(ok){
-    location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-  } else {
-    alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
-    submitBtn.disabled = false;
-  }
-});
+    try {
+      await saveToFirestore(pid, idTail);
+      // 성공하면 다음 페이지 이동
+      location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+    } catch {
+      alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
+      submitBtn.disabled = false; // 재시도 가능
+    }
+  });
 </script>
+</head>
+<body>
+<div class="popup">
+  <h1>전화 번호 뒷자리 4개를 입력해 주세요.</h1>
+  <div class="row">
+    <input id="idtail" type="text" inputmode="numeric" maxlength="4" placeholder="4자리" />
+    <button id="submitBtn" disabled>입력</button>
+  </div>
+  <div class="hint">번호를 잘 확인해 주세요.</div>
+</div>
 </body>
 </html>
