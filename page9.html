@@ -41,9 +41,8 @@
 </div>
 
 <script type="module">
-/***** ▼ Firebase 초기 설정 ▼ *****/
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
@@ -57,7 +56,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-/***** ▲ Firebase 설정 끝 ▲*/
 
 const PAGE = 9;
 const NEXT_PAGE_URL = "page10.html";
@@ -99,15 +97,14 @@ const text = `정신질환자들은 솔직히 사회에서는 짐이지.
   async function saveToFirestore(answers){
     if(!pid) return;
     try{
-      await addDoc(collection(db, "responses"), {
-        pid,
-        page: PAGE,
-        answers,
-        timestamp: new Date()
-      });
-      console.log("✅ Firestore 저장 완료 (page 9)");
+      const docRef = doc(db, "responses", pid);
+      await setDoc(docRef, {
+        page_9: { answers, timestamp: serverTimestamp() }
+      }, { merge:true });
+      console.log(`✅ Firestore 저장 완료 (page ${PAGE})`);
     }catch(e){
       console.error("❌ Firestore 저장 실패:", e);
+      throw e;
     }
   }
 
@@ -129,55 +126,18 @@ const text = `정신질환자들은 솔직히 사회에서는 짐이지.
     }
   }, 1000);
 
-// Firestore 저장
-async function saveToFirestore(answers){
-  if(!pid) return;
-  try{
-    await addDoc(collection(db, "responses"), {
-      pid,
-      page: PAGE,
-      answers,          // 배열 형태
-      timestamp: new Date()
-    });
-    console.log(`✅ Firestore 저장 완료 (page ${PAGE})`);
-  }catch(e){
-    console.error("❌ Firestore 저장 실패:", e);
-    throw e;
+  async function redirect(){
+    try{
+      await saveToFirestore([]); // 기록 후 대기
+      await new Promise(r => setTimeout(r, 200));
+    }catch(e){ console.warn(e); }
+
+    location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
   }
-}
-
-// 페이지 노출 기록
-saveToFirestore([
-  { key: 'P8_STIM_KEY', value: STIM_KEY },
-  { key: 'P8_SHOWN_MS', value: String(DISPLAY_MS) }
-]);
-
-// 진행바 및 타이머
-const bar = document.getElementById('bar');
-let elapsed = 0;
-const interval = setInterval(()=>{
-  elapsed += 1000;
-  bar.style.width = Math.min(100, (elapsed / DISPLAY_MS) * 100) + "%";
-  if (elapsed >= DISPLAY_MS) {
-    clearInterval(interval);
-    redirect();
-  }
-}, 1000);
-
-// 안전한 리디렉션
-async function redirect(){
-  try{
-    // 기록 후 200ms 대기 (추가 answer는 없지만 배열 형태 유지)
-    await saveToFirestore([]);
-    await new Promise(r => setTimeout(r, 200));
-  }catch(e){ console.warn(e); }
-
-  location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-}
-
 
 })();
 </script>
+
 
 </body>
 </html>
