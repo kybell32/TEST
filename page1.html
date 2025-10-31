@@ -6,169 +6,150 @@
 <title>소셜 미디어 연구_p1</title>
 <style>
 body {
-  margin:0;
-  height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#f6f7f9;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,Arial,sans-serif;
-  color:#111827;
+  margin:0;
+  height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#f6f7f9;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,Arial,sans-serif;
+  color:#111827;
 }
 .popup {
-  background:#fff;
-  border-radius:12px;
-  box-shadow:0 4px 20px rgba(0,0,0,.1);
-  padding:24px;
-  max-width:320px;
-  width:100%;
-  text-align:center;
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 4px 20px rgba(0,0,0,.1);
+  padding:24px;
+  max-width:320px;
+  width:100%;
+  text-align:center;
 }
 h1 {
-  font-size:18px;
-  margin:0 0 12px;
+  font-size:18px;
+  margin:0 0 12px;
 }
 .row {
-  display:flex;
-  gap:8px;
-  justify-content:center;
+  display:flex;
+  gap:8px;
+  justify-content:center;
 }
 input[type="text"] {
-  width:50px;
-  padding:0.4em;
-  font-size:1em;
-  text-align:center;
-  box-sizing:border-box;
-  border:1px solid #ccc;
-  border-radius:8px;
-  letter-spacing:4px;
+  width:50px;
+  padding:0.4em;
+  font-size:1em;
+  text-align:center;
+  box-sizing:border-box;
+  border:1px solid #ccc;
+  border-radius:8px;
+  letter-spacing:4px;
 }
 button {
-  width:70px;
-  padding:0.45em 0.5em;
-  font-size:1em;
-  box-sizing:border-box;
-  border:none;
-  background:#2563eb;
-  color:#fff;
-  border-radius:8px;
-  cursor:pointer;
-  font-weight:600;
+  width:70px;
+  padding:0.45em 0.5em;
+  font-size:1em;
+  box-sizing:border-box;
+  border:none;
+  background:#2563eb;
+  color:#fff;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:600;
 }
 button:disabled {
-  opacity:0.5;
-  cursor:not-allowed;
+  opacity:0.5;
+  cursor:not-allowed;
 }
 .hint {
-  font-size:12px;
-  color:#6b7280;
-  margin-top:8px;
+  font-size:12px;
+  color:#6b7280;
+  margin-top:8px;
 }
 /* 모바일 대응 */
 @media (max-width:480px) {
-  input[type="text"], button {
-    width:auto;
-  }
+  input[type="text"], button { width:auto; }
 }
 </style>
 </head>
 <body>
 
 <div class="popup">
-  <h1>전화 번호 뒷자리 4개를 입력해 주세요.</h1>
-  <div class="row">
-    <input id="idtail" type="text" inputmode="numeric" maxlength="4" placeholder="4자리" />
-    <button id="submitBtn" disabled>입력</button>
-  </div>
-  <div class="hint">번호를 잘 확인해 주세요.</div>
+  <h1>전화 번호 뒷자리 4개를 입력해 주세요.</h1>
+  <div class="row">
+    <input id="idtail" type="text" inputmode="numeric" pattern="\d*" maxlength="4" placeholder="4자리" />
+    <button id="submitBtn" disabled>입력</button>
+  </div>
+  <div class="hint">번호를 잘 확인해 주세요.</div>
 </div>
 
+<!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.23.0/firebase-app.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.23.0/firebase-firestore.js";
 
-// Firebase 초기화
 const firebaseConfig = {
-  apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
-  authDomain: "to-be-a-master.firebaseapp.com",
-  projectId: "to-be-a-master",
-  storageBucket: "to-be-a-master.firebasestorage.app",
-  messagingSenderId: "223906864735",
-  appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
-  measurementId: "G-SXF1BMH4DB"
+  apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
+  authDomain: "to-be-a-master.firebaseapp.com",
+  projectId: "to-be-a-master",
+  storageBucket: "to-be-a-master.firebasestorage.app",
+  messagingSenderId: "223906864735",
+  appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
+  measurementId: "G-SXF1BMH4DB"
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const NEXT_PAGE_URL = "page2.html";
 
-// PID 확인/생성
-const qs = new URLSearchParams(location.search);
-let pid = qs.get('pid') || localStorage.getItem('exp_pid');
-if (!pid) {
-  pid = 'p_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-  localStorage.setItem('exp_pid', pid);
-}
+// DOM 준비 후 실행
+document.addEventListener('DOMContentLoaded', () => {
+  const idInput = document.getElementById('idtail');
+  const submitBtn = document.getElementById('submitBtn');
 
-// 유효성 검사
-function isValid(v) { return /^\d{4}$/.test(v); }
+  // PID 확인/생성
+  const qs = new URLSearchParams(location.search);
+  let pid = qs.get('pid') || localStorage.getItem('exp_pid');
+  if (!pid) {
+    pid = 'p_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem('exp_pid', pid);
+  }
 
-// Firestore 저장
-async function saveToFirestore(pid, idTail) {
-  try {
-    const docRef = doc(db, "sessions", pid);
-    await setDoc(docRef, { page_1: { P1_IDTAIL: idTail } }, { merge: true });
-    console.log('Firestore 저장 성공');
-  } catch (e) {
-    console.error('Firestore 저장 실패:', e);
-    throw e;
-  }
-}
+  // 버튼 활성화 함수
+  function updateButton() {
+    let v = idInput.value.replace(/\D/g,'').slice(0,4);
+    idInput.value = v;
+    submitBtn.disabled = v.length !== 4;
+  }
 
-// DOM 요소
-const idInput = document.getElementById('idtail');
-const submitBtn = document.getElementById('submitBtn');
+  // 숫자 입력 이벤트
+  idInput.addEventListener('input', updateButton);
+  idInput.addEventListener('keyup', updateButton);
 
-// 버튼 활성화
-function syncButton() {
-  submitBtn.disabled = !isValid(idInput.value.trim());
-}
+  // 붙여넣기/IME 대비 keypress 제한
+  idInput.addEventListener('keypress', e => {
+    if (!/[0-9]/.test(e.key)) e.preventDefault();
+  });
 
-// ✨ 수정된 부분: input 이벤트 리스너
-// 입력 값에서 숫자만 남기고, 버튼 동기화를 수행합니다.
-idInput.addEventListener('input', () => {
-  // 숫자 외의 문자 제거 (붙여넣기 방지)
-  const sanitizedValue = idInput.value.replace(/\D/g, '').slice(0, 4);
-  
-  if (idInput.value !== sanitizedValue) {
-    idInput.value = sanitizedValue;
-  }
-  
-  syncButton();
-});
+  // 초기 체크
+  updateButton();
 
-// keypress 리스너는 제거 (input 리스너로 유효성 검사를 통합했습니다.)
-// idInput.addEventListener('keypress', e => {
-//   if (!/[0-9]/.test(e.key)) e.preventDefault();
-// });
+  // 클릭 이벤트
+  submitBtn.addEventListener('click', async () => {
+    const idTail = idInput.value.trim();
+    if (idTail.length !== 4) return;
 
-// 초기 상태 체크
-syncButton();
+    submitBtn.disabled = true;
 
-// 클릭 이벤트
-submitBtn.addEventListener('click', async () => {
-  const idTail = idInput.value.trim();
-  if (!isValid(idTail)) return;
-
-  submitBtn.disabled = true;
-
-  try {
-    await saveToFirestore(pid, idTail);
-    location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-  } catch {
-    alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
-    submitBtn.disabled = false;
-  }
+    try {
+      const docRef = doc(db, "sessions", pid);
+      await setDoc(docRef, { page_1: { P1_IDTAIL: idTail } }, { merge: true });
+      console.log('Firestore 저장 성공');
+      location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+    } catch (e) {
+      console.error('Firestore 저장 실패:', e);
+      alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
+      submitBtn.disabled = false;
+    }
+  });
 });
 </script>
 
