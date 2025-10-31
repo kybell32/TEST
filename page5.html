@@ -1,0 +1,68 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>소셜 미디어 연구_p4 </title>
+<style>
+  :root{--bg:#ffffff;--line:#e5e7eb;--pri:#2563eb;--muted:#6b7280}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,Arial,sans-serif;color:#111827;display:flex;align-items:center;justify-content:center}
+  .popup{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.08);padding:24px;max-width:420px;width:100%;text-align:center}
+  h1{font-size:18px;margin:0 0 12px}
+  p{margin:8px 0;color:#374151}
+  .muted{color:var(--muted);font-size:13px}
+  .btn{border:none;border-radius:10px;padding:12px 16px;background:var(--pri);color:#fff;font-weight:700;cursor:pointer;margin-top:14px}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+</style>
+</head>
+<body>
+  <main class="popup" aria-labelledby="ttl">
+    <h1 id="ttl">실험 안내</h1>
+    <p>다음은 한 소셜 미디어에 게시된 글입니다.</p>
+    <p class="muted">글은 <strong>45초</strong>간 제시됩니다.</p>
+    <button id="go" class="btn">읽기</button>
+  </main>
+
+<script>
+/***** ▼ 설정 ▼ *****/
+const API = "https://script.google.com/macros/s/AKfycbxhI7GJJI2jebIWhxr_3nkvvYStEtzNjFZpUuIezsnNKd7G1Mf8emvyrW_AJUsZNg2U/exec";
+const PAGE = 5;
+const NEXT_PAGE_URL = "page6.html";
+/***** ▲ 설정 끝 ▲ *****/
+
+(function(){
+  const qs = new URLSearchParams(location.search);
+  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
+  const go = document.getElementById('go');
+  let sending = false;
+
+  async function sessionUpsert() {
+    const payload = {
+      type: 'SESSION_UPSERT',
+      pid,
+      page: PAGE,
+      answers: [] // 수집값 없음 → 메타만 갱신 (updated_at, last_page, pages_submitted)
+    };
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' }, // 심플 요청 → preflight 없음
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) console.warn('SESSION_UPSERT failed:', res.status);
+  }
+
+  go.addEventListener('click', async ()=>{
+    if (sending) return;
+    sending = true;
+    go.disabled = true;
+    try { await sessionUpsert(); } catch(e) { console.warn(e); }
+    const next = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+    location.href = next;
+  });
+})();
+</script>
+</body>
+</html>
