@@ -26,43 +26,70 @@
     <button id="go" class="btn">읽기</button>
   </main>
 
-<script>
-/***** ▼ 설정 ▼ *****/
-const API = "https://script.google.com/macros/s/AKfycbxhI7GJJI2jebIWhxr_3nkvvYStEtzNjFZpUuIezsnNKd7G1Mf8emvyrW_AJUsZNg2U/exec";
-const PAGE = 5;
-const NEXT_PAGE_URL = "page6.html";
-/***** ▲ 설정 끝 ▲ *****/
+<script type="module">
+  /***** ▼ Firebase 초기 설정 ▼ *****/
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-(function(){
-  const qs = new URLSearchParams(location.search);
-  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-  const go = document.getElementById('go');
-  let sending = false;
+  const firebaseConfig = {
+    apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
+    authDomain: "to-be-a-master.firebaseapp.com",
+    projectId: "to-be-a-master",
+    storageBucket: "to-be-a-master.firebasestorage.app",
+    messagingSenderId: "223906864735",
+    appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
+    measurementId: "G-SXF1BMH4DB"
+  };
 
-  async function sessionUpsert() {
-    const payload = {
-      type: 'SESSION_UPSERT',
-      pid,
-      page: PAGE,
-      answers: [] // 수집값 없음 → 메타만 갱신 (updated_at, last_page, pages_submitted)
-    };
-    const res = await fetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' }, // 심플 요청 → preflight 없음
-      body: JSON.stringify(payload)
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  /***** ▲ Firebase 설정 끝 ▲ *****/
+
+
+  /***** ▼ 페이지 설정 ▼ *****/
+  const PAGE = 5;
+  const NEXT_PAGE_URL = "page6.html";
+  /***** ▲ 설정 끝 ▲ *****/
+
+  (function(){
+    const qs = new URLSearchParams(location.search);
+    const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
+    const go = document.getElementById('go');
+    let sending = false;
+
+    // ✅ Firestore에 메타 데이터 저장
+    async function sessionUpsert() {
+      try {
+        await addDoc(collection(db, "responses"), {
+          pid,
+          page: PAGE,
+          answers: [], // 수집값 없음
+          timestamp: new Date()
+        });
+        console.log("✅ Firestore 저장 완료 (page 5)");
+      } catch (e) {
+        console.error("❌ Firestore 저장 실패:", e);
+        throw e;
+      }
+    }
+
+    go.addEventListener('click', async ()=>{
+      if (sending) return;
+      sending = true;
+      go.disabled = true;
+      try {
+        await sessionUpsert();
+        const next = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+        location.href = next;
+      } catch(e) {
+        console.warn(e);
+        alert('데이터 저장에 실패했습니다. 다시 시도해주세요.');
+        sending = false;
+        go.disabled = false;
+      }
     });
-    if (!res.ok) console.warn('SESSION_UPSERT failed:', res.status);
-  }
-
-  go.addEventListener('click', async ()=>{
-    if (sending) return;
-    sending = true;
-    go.disabled = true;
-    try { await sessionUpsert(); } catch(e) { console.warn(e); }
-    const next = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-    location.href = next;
-  });
-})();
+  })();
 </script>
+
 </body>
 </html>
