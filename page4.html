@@ -172,14 +172,19 @@ p.4
       }
     }
 
-    function collectAnswers(){
-      const out = [];
-      document.querySelectorAll('.scale').forEach(scale=>{
-        const el = document.querySelector(`input[name="${scale.dataset.name}"]:checked`);
-        if (el) out.push({ key: scale.dataset.qkey, value: el.value });
+    function collectAnswers() {
+  const out = [];
+  document.querySelectorAll('.scale').forEach(scale => {
+    const el = document.querySelector(`input[name="${scale.dataset.name}"]:checked`);
+    if (el) {
+      out.push({
+        question: scale.dataset.qkey,  // 질문 키 (P7_S1_Q1 등)
+        answer: el.value               // 선택값
       });
-      return out;
     }
+  });
+  return out;
+}
 
     nextBtn.addEventListener('click', async ()=>{
       if (!answeredAll() || sending) return;
