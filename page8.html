@@ -146,47 +146,49 @@
     refreshBtn();
 
     // 데이터 수집
-    function collectAnswers(){
-      const out=[];
-      document.querySelectorAll('.scale').forEach(scale=>{
-        const name=scale.dataset.name;
-        const key=scale.dataset.qkey;
-        const el=document.querySelector(`input[name="${name}"]:checked`);
-        if(el) out.push({key, value:el.value});
-      });
-      return out;
-    }
+// 데이터 수집
+function collectAnswers() {
+  return [...document.querySelectorAll('.scale')].map(scale => {
+    const key = scale.dataset.qkey;
+    const selected = scale.querySelector('input:checked');
+    return { key, value: selected ? selected.value : null };
+  }).filter(a => a.value !== null); // 체크된 것만
+}
 
-    // ✅ Firestore 저장
-    async function saveToFirestore(answers){
-      if(!pid) return;
-      try{
-        await addDoc(collection(db, "responses"), {
-          pid,
-          page: PAGE,
-          answers,
-          timestamp: new Date()
-        });
-        console.log("✅ Firestore 저장 완료 (page 8)");
-      }catch(e){
-        console.error("❌ Firestore 저장 실패:", e);
-        throw e;
-      }
-    }
-
-    nextBtn.addEventListener('click', async ()=>{
-      if(!answeredAll()||sending) return;
-      sending=true; refreshBtn();
-
-      const answers = collectAnswers();
-
-      try{
-        await saveToFirestore(answers);
-        await new Promise(r=>setTimeout(r,300));
-      }catch(e){console.warn(e);}
-
-      location.href=`${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+// Firestore 저장
+async function saveToFirestore(answers) {
+  if (!pid) return;
+  try {
+    await addDoc(collection(db, "responses"), {
+      pid,
+      page: PAGE,
+      answers,          // 배열 형태
+      timestamp: new Date()
     });
+    console.log(`✅ Firestore 저장 완료 (page ${PAGE})`);
+  } catch (e) {
+    console.error("❌ Firestore 저장 실패:", e);
+    throw e;
+  }
+}
+
+// next 버튼 클릭
+nextBtn.addEventListener('click', async () => {
+  if (!answeredAll() || sending) return;
+  sending = true;
+  refreshBtn();
+
+  const answers = collectAnswers();
+
+  try {
+    await saveToFirestore(answers);
+    await new Promise(r => setTimeout(r, 300));
+  } catch (e) {
+    console.warn(e);
+  }
+
+  location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+});
 
   })();
 </script>
