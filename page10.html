@@ -215,15 +215,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 1000);
 
-  // 8️⃣ 안전한 리디렉션
-  async function redirect(){
-    try{
-      await saveToFirestore([]);
-      await new Promise(r => setTimeout(r, 200));
-    }catch(e){ console.warn(e); }
+ // 8️⃣ 안전한 리디렉션
+async function redirect(){
+  try{
+    await saveToFirestore([]);
+    await new Promise(r => setTimeout(r, 200));
+  }catch(e){ console.warn(e); }
 
-    location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-  }
+  location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+}
+
+// 🔹 다음 버튼 클릭 이벤트 연결
+const nextBtn = document.getElementById('nextBtn');
+nextBtn.addEventListener('click', redirect);
 
 });
 </script>
