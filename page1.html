@@ -56,14 +56,15 @@
   syncButton();
 
   async function saveToFirestore(pid, idTail){
-    try {
-      const docRef = doc(db, "sessions", pid); // sessions 컬렉션, 문서 ID = pid
-      await setDoc(docRef, { page: PAGE, P1_IDTAIL: idTail }, { merge: true });
-    } catch (e) {
-      console.error("Firestore 저장 실패:", e);
-      throw e;
-    }
+  try {
+    const docRef = doc(db, "sessions", pid); // 문서 ID = pid
+    await setDoc(docRef, { page_1: { P1_IDTAIL: idTail } }, { merge: true });
+  } catch (e) {
+    console.error("Firestore 저장 실패:", e);
+    throw e;
   }
+}
+
 
   submitBtn.addEventListener('click', async ()=>{
     const idTail = idInput.value.trim();
