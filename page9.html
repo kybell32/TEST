@@ -129,16 +129,52 @@ const text = `정신질환자들은 솔직히 사회에서는 짐이지.
     }
   }, 1000);
 
-  // 안전한 리디렉션
-  async function redirect(){
-    try{
-      // 기록 후 200ms 대기
-      await saveToFirestore([]);
-      await new Promise(r => setTimeout(r, 200));
-    }catch(e){ console.warn(e); }
-
-    location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+// Firestore 저장
+async function saveToFirestore(answers){
+  if(!pid) return;
+  try{
+    await addDoc(collection(db, "responses"), {
+      pid,
+      page: PAGE,
+      answers,          // 배열 형태
+      timestamp: new Date()
+    });
+    console.log(`✅ Firestore 저장 완료 (page ${PAGE})`);
+  }catch(e){
+    console.error("❌ Firestore 저장 실패:", e);
+    throw e;
   }
+}
+
+// 페이지 노출 기록
+saveToFirestore([
+  { key: 'P8_STIM_KEY', value: STIM_KEY },
+  { key: 'P8_SHOWN_MS', value: String(DISPLAY_MS) }
+]);
+
+// 진행바 및 타이머
+const bar = document.getElementById('bar');
+let elapsed = 0;
+const interval = setInterval(()=>{
+  elapsed += 1000;
+  bar.style.width = Math.min(100, (elapsed / DISPLAY_MS) * 100) + "%";
+  if (elapsed >= DISPLAY_MS) {
+    clearInterval(interval);
+    redirect();
+  }
+}, 1000);
+
+// 안전한 리디렉션
+async function redirect(){
+  try{
+    // 기록 후 200ms 대기 (추가 answer는 없지만 배열 형태 유지)
+    await saveToFirestore([]);
+    await new Promise(r => setTimeout(r, 200));
+  }catch(e){ console.warn(e); }
+
+  location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+}
+
 
 })();
 </script>
