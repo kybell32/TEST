@@ -89,81 +89,100 @@
   </section>
 </main>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const API = "https://script.google.com/macros/s/AKfycbxhI7GJJI2jebIWhxr_3nkvvYStEtzNjFZpUuIezsnNKd7G1Mf8emvyrW_AJUsZNg2U/exec";
-  const PAGE = 3;
-  const NEXT_PAGE_URL = "page4.html";
+<script type="module">
+  // ✅ Firebase SDK 불러오기
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-  const qs = new URLSearchParams(location.search);
-  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-  const nextBtn = document.getElementById('nextBtn');
-  const pname = document.getElementById('pname');
+  // ✅ Firebase 설정 (본인 프로젝트 값 그대로 사용)
+  const firebaseConfig = {
+    apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
+    authDomain: "to-be-a-master.firebaseapp.com",
+    projectId: "to-be-a-master",
+    storageBucket: "to-be-a-master.firebasestorage.app",
+    messagingSenderId: "223906864735",
+    appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
+    measurementId: "G-SXF1BMH4DB"
+  };
 
-  const qNames = ['q1','q2','q3','q4'];
+  // ✅ Firebase & Firestore 초기화
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-  function getAnswers(){
-    const out = {};
-    for(const n of qNames){
-      const v = (document.querySelector(`input[name="${n}"]:checked`)||{}).value || null;
-      out[n] = v;
+  document.addEventListener('DOMContentLoaded', () => {
+    const PAGE = 3;
+    const NEXT_PAGE_URL = "page4.html";
+
+    const qs = new URLSearchParams(location.search);
+    const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
+    const nextBtn = document.getElementById('nextBtn');
+    const pname = document.getElementById('pname');
+    const qNames = ['q1', 'q2', 'q3', 'q4'];
+
+    function getAnswers() {
+      const out = {};
+      for (const n of qNames) {
+        const v = (document.querySelector(`input[name="${n}"]:checked`) || {}).value || null;
+        out[n] = v;
+      }
+      return out;
     }
-    return out;
-  }
 
-  function allYes(ans){ return ans.q1==='예' && ans.q2==='예' && ans.q3==='예' && ans.q4==='예'; }
+    function allYes(ans) {
+      return ans.q1 === '예' && ans.q2 === '예' && ans.q3 === '예' && ans.q4 === '예';
+    }
 
-  function syncState(){
-    const ans = getAnswers();
-    nextBtn.disabled = !(allYes(ans) && pname.value.trim());
-  }
+    function syncState() {
+      const ans = getAnswers();
+      nextBtn.disabled = !(allYes(ans) && pname.value.trim());
+    }
 
-  document.querySelectorAll('input[type="radio"]').forEach(el=>el.addEventListener('change', syncState));
-  pname.addEventListener('input', syncState);
+    document.querySelectorAll('input[type="radio"]').forEach(el => el.addEventListener('change', syncState));
+    pname.addEventListener('input', syncState);
 
-  async function sessionUpsert(answers){
-    const payload = { type:'SESSION_UPSERT', pid, page: PAGE, answers };
-    try{
-      const res = await fetch(API, { method:'POST', headers:{ 'Content-Type':'text/plain' }, body: JSON.stringify(payload) });
-      if(!res.ok) console.warn('SESSION_UPSERT failed:', res.status);
-    } catch(e){ console.warn(e); }
-  }
+    // ✅ Firestore에 데이터 저장 함수
+    async function saveToFirestore(data) {
+      try {
+        await addDoc(collection(db, "responses"), data);
+        console.log("✅ Firestore 저장 성공");
+      } catch (e) {
+        console.error("❌ Firestore 저장 실패:", e);
+        throw e;
+      }
+    }
 
-  nextBtn.addEventListener('click', async ()=>{
-  const ans = getAnswers();
-  if(!allYes(ans)) return;
-  const name = pname.value.trim();
-  const answers = [
-    { key:'P3_Q1', value: ans.q1 },
-    { key:'P3_Q2', value: ans.q2 },
-    { key:'P3_Q3', value: ans.q3 },
-    { key:'P3_Q4', value: ans.q4 },
-    { key:'P3_NAME', value: name }
-  ];
+    nextBtn.addEventListener('click', async () => {
+      const ans = getAnswers();
+      if (!allYes(ans)) return;
+      const name = pname.value.trim();
 
-  nextBtn.disabled = true; // 중복 클릭 방지
-  try {
-    const res = await fetch(API, {
-      method:'POST',
-      headers:{ 'Content-Type':'text/plain' },
-      body: JSON.stringify({ type:'SESSION_UPSERT', pid, page: PAGE, answers })
+      const answers = {
+        pid,
+        page: PAGE,
+        P3_Q1: ans.q1,
+        P3_Q2: ans.q2,
+        P3_Q3: ans.q3,
+        P3_Q4: ans.q4,
+        P3_NAME: name,
+        timestamp: new Date()
+      };
+
+      nextBtn.disabled = true; // 중복 클릭 방지
+
+      try {
+        // ✅ Firestore에 저장
+        await saveToFirestore(answers);
+
+        // 저장 성공 시 다음 페이지로 이동
+        location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+      } catch (e) {
+        console.warn('데이터 저장 실패:', e);
+        alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
+        nextBtn.disabled = false; // 재시도 가능
+      }
     });
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    // Apps Script JSON 확인 (선택)
-    const data = await res.json().catch(()=>({}));
-    if(data.ok===false) throw new Error('API rejected');
-
-    location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-
-  } catch(e) {
-    console.warn('데이터 저장 실패:', e);
-    alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
-    nextBtn.disabled = false; // 재시도 가능
-  }
-});
-
-});
+  });
 </script>
+
 </body>
 </html>
