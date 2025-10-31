@@ -131,12 +131,31 @@
     }
 
     // 안전한 redirect
-    async function logVariantAndRedirect() {
-      await saveVariant();
-      // 느린 네트워크 고려 300ms 대기
-      await new Promise(r => setTimeout(r, 300));
-      location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-    }
+    // ✅ Firestore에 variant 기록 (배열 구조)
+async function saveVariant() {
+  if (!pid) return;
+  try {
+    const answers = [
+      {
+        key: 'P5_VARIANT',
+        value: variant.key,
+        detail: `노출 자극 ${variant.key} (${variant.title})`
+      }
+    ];
+
+    await addDoc(collection(db, "responses"), {
+      pid,
+      page: 5,       // 페이지 번호 p.5
+      answers,       // 배열 형태
+      timestamp: new Date()
+    });
+
+    console.log("✅ Firestore 저장 완료 (page 5, variant)");
+  } catch (e) {
+    console.warn("❌ Firestore 저장 실패:", e);
+  }
+}
+
 
     // 45초 타이머
     const secEl = document.getElementById('sec');
