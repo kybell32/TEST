@@ -62,8 +62,7 @@ p.4
 <script type="module">
   /***** ▼ Firebase 초기 설정 ▼ *****/
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
-
+  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
@@ -80,7 +79,7 @@ p.4
   /***** ▲ Firebase 설정 끝 ▲ *****/
 
 
-  /***** ▼ 페이지 설정 ▼ **** */
+  /***** ▼ 페이지 설정 ▼ *****/
   const PAGE = 4;
   const NEXT_PAGE_URL = "page5.html";
 
@@ -158,39 +157,29 @@ p.4
     function refreshBtn(){ nextBtn.disabled = !answeredAll() || sending; }
 
     // ✅ Firestore 저장 함수
-    
-// ...
-
-async function saveToFirestore(answers) {
-  try {
-    const docRef = doc(db, "responses", pid);
-    await setDoc(docRef, {
-      [`page_${PAGE}`]: {
-        answers,
-        timestamp: serverTimestamp()
+    async function saveToFirestore(answers) {
+      try {
+        await addDoc(collection(db, "responses"), {
+          pid,
+          page: PAGE,
+          answers,
+          timestamp: new Date()
+        });
+        console.log("✅ Firestore 저장 완료 (page 4)");
+      } catch (e) {
+        console.error("❌ Firestore 저장 실패:", e);
+        throw e;
       }
-    }, { merge: true });
-    console.log(`✅ Firestore 저장 완료 (page ${PAGE})`);
-  } catch (e) {
-    console.error("❌ Firestore 저장 실패:", e);
-    throw e;
-  }
-}
-
-
-    function collectAnswers() {
-  const out = [];
-  document.querySelectorAll('.scale').forEach(scale => {
-    const el = document.querySelector(`input[name="${scale.dataset.name}"]:checked`);
-    if (el) {
-      out.push({
-        question: scale.dataset.qkey,  // 질문 키 (P7_S1_Q1 등)
-        answer: el.value               // 선택값
-      });
     }
-  });
-  return out;
-}
+
+    function collectAnswers(){
+      const out = [];
+      document.querySelectorAll('.scale').forEach(scale=>{
+        const el = document.querySelector(`input[name="${scale.dataset.name}"]:checked`);
+        if (el) out.push({ key: scale.dataset.qkey, value: el.value });
+      });
+      return out;
+    }
 
     nextBtn.addEventListener('click', async ()=>{
       if (!answeredAll() || sending) return;
@@ -206,6 +195,7 @@ async function saveToFirestore(answers) {
     });
   })();
 </script>
+
 
 </body>
 </html>
