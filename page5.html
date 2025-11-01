@@ -26,8 +26,9 @@
   </main>
 
 <script type="module">
+  /***** ▼ Firebase 초기 설정 ▼ *****/
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
@@ -41,9 +42,13 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  /***** ▲ Firebase 설정 끝 ▲ *****/
 
+
+  /***** ▼ 페이지 설정 ▼ *****/
   const PAGE = 5;
   const NEXT_PAGE_URL = "page6.html";
+  /***** ▲ 설정 끝 ▲ *****/
 
   (function(){
     const qs = new URLSearchParams(location.search);
@@ -51,25 +56,16 @@
     const go = document.getElementById('go');
     let sending = false;
 
-    async function saveToFirestore() {
+    // ✅ Firestore에 메타 데이터 저장
+    async function sessionUpsert() {
       try {
-        const answers = [
-          {
-            action: "read_post",
-            detail: "45초간 게시글 표시 안내",
-            value: null
-          }
-        ];
-
-        const docRef = doc(db, "responses", pid);
-        await setDoc(docRef, {
-          [`page_${PAGE}`]: {
-            answers,
-            timestamp: serverTimestamp()
-          }
-        }, { merge: true });
-
-        console.log(`✅ Firestore 저장 완료 (page ${PAGE})`);
+        await addDoc(collection(db, "responses"), {
+          pid,
+          page: PAGE,
+          answers: [], // 수집값 없음
+          timestamp: new Date()
+        });
+        console.log("✅ Firestore 저장 완료 (page 5)");
       } catch (e) {
         console.error("❌ Firestore 저장 실패:", e);
         throw e;
@@ -81,7 +77,7 @@
       sending = true;
       go.disabled = true;
       try {
-        await saveToFirestore();
+        await sessionUpsert();
         const next = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
         location.href = next;
       } catch(e) {
