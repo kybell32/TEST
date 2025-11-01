@@ -55,108 +55,136 @@
 </main>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+  /***** ▼ Firebase 초기 설정 ▼ *****/
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
-  authDomain: "to-be-a-master.firebaseapp.com",
-  projectId: "to-be-a-master",
-  storageBucket: "to-be-a-master.firebasestorage.app",
-  messagingSenderId: "223906864735",
-  appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
-  measurementId: "G-SXF1BMH4DB"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-const DURATION_SEC = 45;
-const NEXT_PAGE_URL = "page7.html";
-
-(function(){
-  const qs = new URLSearchParams(location.search);
-  const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-  if (!pid) console.warn("pid가 비어 있습니다. 로그 기록 불가!");
-
-  const stimuli = {
-    A: { key: 'A', title: '정치병자들이 물에 빠졌다.txt', body: `...내용 생략...` },
-    B: { key: 'B', title: '정치병자들은 답이 없다.', body: `...내용 생략...` }
+  const firebaseConfig = {
+    apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
+    authDomain: "to-be-a-master.firebaseapp.com",
+    projectId: "to-be-a-master",
+    storageBucket: "to-be-a-master.firebasestorage.app",
+    messagingSenderId: "223906864735",
+    appId: "1:223906864735:web:a04b3fdfa88e48a99905ea",
+    measurementId: "G-SXF1BMH4DB"
   };
 
-  let variantKey = localStorage.getItem('stimulus_variant');
-  if (!variantKey) {
-    variantKey = Math.random() < 0.7 ? 'A' : 'B';
-    localStorage.setItem('stimulus_variant', variantKey);
-  }
-  const variant = stimuli[variantKey];
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  /***** ▲ Firebase 설정 끝 ▲ *****/
 
-  document.getElementById('title').textContent = variant.title;
-  document.getElementById('body').textContent = variant.body;
+  /***** ▼ 페이지 설정 ▼ *****/
+  const DURATION_SEC = 45;
+  const NEXT_PAGE_URL = "page7.html";
+  /***** ▲ 설정 끝 ▲ *****/
 
-  const counts = (() => {
-    const save = 30 + Math.floor(Math.random()*71);
-    const comment = save + 20 + Math.floor(Math.random()*181);
-    const like = comment + 50 + Math.floor(Math.random()*601);
-    const share = Math.min(2000, like + 100 + Math.floor(Math.random()*901));
-    return {share, like, comment, save};
-  })();
-  document.getElementById('shareCnt').textContent = counts.share.toLocaleString();
-  document.getElementById('likeCnt').textContent = counts.like.toLocaleString();
-  document.getElementById('commentCnt').textContent = counts.comment.toLocaleString();
-  document.getElementById('saveCnt').textContent = counts.save.toLocaleString();
+  (function(){
+    const qs = new URLSearchParams(location.search);
+    const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
+    if (!pid) console.warn("pid가 비어 있습니다. 로그 기록 불가!");
 
-  let saved = false;
+    // 자극 텍스트 (A/B)
+    const stimuli = {
+      A: { key: 'A', title: '정치병자들이 물에 빠졌다.txt', body: `정치병자들이 물에 빠졌다.
+어떤 사람이 재빨리 달려가 한 가지 질문을 하고는 다시 돌아갔다.
 
-  async function saveVariant() {
-    if (!pid || saved) return;
-    try {
-      const answers = [
-        {
-          key: 'P6_VARIANT',
-          value: variant.key,
-          detail: `노출 자극 ${variant.key} (${variant.title})`
-        }
-      ];
-      const docRef = doc(db, "responses", pid);
-      await setDoc(docRef, {
-        page_6: { answers, timestamp: serverTimestamp() }
-      }, { merge: true });
-      console.log("✅ Firestore 저장 완료 (page 6)");
-      saved = true;
-    } catch(e) {
-      console.error("❌ Firestore 저장 실패:", e);
+그 장면을 목격한 지나가던 행인이 이상하게 생각하여
+그 사람에게 다가가 물었다.
+
+“왜 아무도 구하지 않았소?”
+
+그러자 그 사람이 대답했다.
+
+“둘은 정치병자인데 하나는 좌빨, 하나는 수구꼴통이더이다. 둘 다 구하면 지들이 물에 빠진 게 지금 정권 때문이니 지난 정권 때문이니 망상질하며 싸울 테고, 보수 쪽만 구하자니 진보가 ‘날.버리면 넌.기득권 .앞잡이다’ 하고, 진보 쪽만 구하자니 보수가 ‘빨갱이가 따로 없네. 특검해라! 멸공!’이라며 능지 낮은 미친 소리를 해댈 게 뻔하잖소.”
+
+그 말을 들은 행인이 고개를 끄덕이며 가던 길을 계속 갔다.
+그리고 세상은 조용해졌다.` },
+      B: { key: 'B', title: '정치병자들은 답이 없다.', body: `정치병자들은 답이 없다.
+말도 안 통하고 그냥 사회의 악임.
+
+진보 정치병자들한테 조금이라도 보수 입장으로 얘기하면
+기득권 편이라고 일반화 하고,
+
+보수 정치병자들한테 조금이라도 진보 입장을 얘기하면
+빨갱이로 몰아감.
+
+진짜 아무 맥락 없이 정치로 시작해서 정치로 끝나는 얘기만 하고, 뭐만 하면 프레임 씌우면서 그 정치적 틀에서만 생각을 함. 맨날 좌우 갈라치기로 과몰입 하는데 지들이 상대 진영 탓하는 거 들어보면 망상 장애 그 자체임. 보고 싶은 것만 보고 듣고 싶은 것만 듣고, 어디서 이상한 유튜브 보고 그게 사실이라고 믿는 게 정상적인 지능이냐고..
+
+정치병은 약도 안 통하고 못 고친다..
+그냥 사라지는 게 답임.` }
+    };
+
+    // 1) 자극 배정
+    let variantKey = localStorage.getItem('stimulus_variant');
+    if (!variantKey) {
+      variantKey = Math.random() < 0.7 ? 'A' : 'B';
+      localStorage.setItem('stimulus_variant', variantKey);
     }
-  }
+    const variant = stimuli[variantKey];
 
-  function redirectNext() {
-    saveVariant().finally(()=>{
-      const next = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-      location.href = next;
-    });
-  }
+    // 2) 화면 반영
+    document.getElementById('title').textContent = variant.title;
+    document.getElementById('body').textContent = variant.body;
 
-  const secEl = document.getElementById('sec');
-  const barEl = document.getElementById('bar');
-  let left = DURATION_SEC;
-  secEl.textContent = left;
-  barEl.style.width = '0%';
+    // 3) 노출 지표(가짜)
+    const counts = (() => {
+      const save = 30 + Math.floor(Math.random()*71);
+      const comment = save + 20 + Math.floor(Math.random()*181);
+      const like = comment + 50 + Math.floor(Math.random()*601);
+      const share = Math.min(2000, like + 100 + Math.floor(Math.random()*901));
+      return {share, like, comment, save};
+    })();
+    document.getElementById('shareCnt').textContent = counts.share.toLocaleString();
+    document.getElementById('likeCnt').textContent = counts.like.toLocaleString();
+    document.getElementById('commentCnt').textContent = counts.comment.toLocaleString();
+    document.getElementById('saveCnt').textContent = counts.save.toLocaleString();
 
-  const tick = setInterval(()=>{
-    left = Math.max(0, left-1);
+    // ✅ Firestore에 variant 기록
+    async function saveVariant() {
+      if (!pid) return;
+      try {
+        await addDoc(collection(db, "responses"), {
+          pid,
+          page: 6,
+          answers: [{ key: 'P5_VARIANT', value: variant.key }],
+          timestamp: new Date()
+        });
+        console.log("✅ Firestore 저장 완료 (variant)");
+      } catch (e) {
+        console.warn("❌ Firestore 저장 실패:", e);
+      }
+    }
+
+    // 안전한 redirect
+    async function logVariantAndRedirect() {
+      await saveVariant();
+      // 느린 네트워크 고려 300ms 대기
+      await new Promise(r => setTimeout(r, 300));
+      location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
+    }
+
+    // 45초 타이머
+    const secEl = document.getElementById('sec');
+    const barEl = document.getElementById('bar');
+    let left = DURATION_SEC;
     secEl.textContent = left;
-    barEl.style.width = ((DURATION_SEC-left)/DURATION_SEC)*100 + '%';
-    if(left===0){
-      clearInterval(tick);
-      redirectNext();
-    }
-  },1000);
+    barEl.style.width = '0%';
 
-  //  안전장치
-  setTimeout(redirectNext, DURATION_SEC*1000 + 500);
-})();
+    const tick = setInterval(()=>{
+      left = Math.max(0, left - 1);
+      secEl.textContent = left;
+      barEl.style.width = ((DURATION_SEC - left)/DURATION_SEC)*100 + '%';
+      if (left === 0) {
+        clearInterval(tick);
+        logVariantAndRedirect();
+      }
+    }, 1000);
+
+    // 혹시 45초 초과 안전장치
+    setTimeout(logVariantAndRedirect, DURATION_SEC*1000 + 500);
+
+  })();
 </script>
-
 
 </body>
 </html>
