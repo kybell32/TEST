@@ -41,8 +41,9 @@
 </div>
 
 <script type="module">
+/***** ▼ Firebase 초기 설정 ▼ *****/
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
@@ -56,6 +57,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+/***** ▲ Firebase 설정 끝 ▲*/
 
 const PAGE = 9;
 const NEXT_PAGE_URL = "page10.html";
@@ -97,14 +99,15 @@ const text = `정신질환자들은 솔직히 사회에서는 짐이지.
   async function saveToFirestore(answers){
     if(!pid) return;
     try{
-      const docRef = doc(db, "responses", pid);
-      await setDoc(docRef, {
-        page_9: { answers, timestamp: serverTimestamp() }
-      }, { merge:true });
-      console.log(`✅ Firestore 저장 완료 (page ${PAGE})`);
+      await addDoc(collection(db, "responses"), {
+        pid,
+        page: PAGE,
+        answers,
+        timestamp: new Date()
+      });
+      console.log("✅ Firestore 저장 완료 (page 9)");
     }catch(e){
       console.error("❌ Firestore 저장 실패:", e);
-      throw e;
     }
   }
 
@@ -114,7 +117,7 @@ const text = `정신질환자들은 솔직히 사회에서는 짐이지.
     { key: 'P8_SHOWN_MS', value: String(DISPLAY_MS) }
   ]);
 
-  //  진행바 및 타이머
+  // 진행바 및 타이머
   const bar = document.getElementById('bar');
   let elapsed = 0;
   const interval = setInterval(()=>{
@@ -126,9 +129,11 @@ const text = `정신질환자들은 솔직히 사회에서는 짐이지.
     }
   }, 1000);
 
+  // 안전한 리디렉션
   async function redirect(){
     try{
-      await saveToFirestore([]); // 기록 후 대기
+      // 기록 후 200ms 대기
+      await saveToFirestore([]);
       await new Promise(r => setTimeout(r, 200));
     }catch(e){ console.warn(e); }
 
@@ -137,7 +142,6 @@ const text = `정신질환자들은 솔직히 사회에서는 짐이지.
 
 })();
 </script>
-
 
 </body>
 </html>
