@@ -111,8 +111,9 @@
 </main>
 
 <script type="module">
+/***** ▼ Firebase 초기 설정 ▼ *****/
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCEZEZItyfBTMg8tVWv3RQX19r6R-71pME",
@@ -126,76 +127,80 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+/***** ▲ Firebase 설정 끝 ▲*/
 
-const PAGE = 10;
-const NEXT_PAGE_URL = "page11.html";
+const PAGE = 10;               // 페이지 번호
+const NEXT_PAGE_URL = "end.html"; // 다음 페이지
+const DISPLAY_MS = 30000;        // 30초 예시
+const STIM_KEY = "P9_POST_1";    // 분석용 식별자
 
-document.addEventListener('DOMContentLoaded', () => {
+const text = `마지막 자극 텍스트 예시입니다.
+여기 내용을 페이지에 보여주고 사용자의 반응을 Firestore에 기록합니다.`;
+
+(function(){
   const qs = new URLSearchParams(location.search);
   const pid = qs.get('pid') || localStorage.getItem('exp_pid') || '';
-  const nextBtn = document.getElementById('nextBtn');
+  document.getElementById('body').textContent = text;
 
-  // 칩 버튼 생성
-  document.querySelectorAll('.scale').forEach(scale => {
-    for(let i=1; i<=7; i++){
-      const label = document.createElement('label');
-      label.className = 'chip';
-      label.innerHTML = `<strong>${i}</strong><input type="radio" name="${scale.dataset.name}" value="${i}">`;
-      label.querySelector('input').addEventListener('change', checkAllAnswered);
-      scale.appendChild(label);
-    }
-  });
+  // 더미 지표
+  const counts = (() => {
+    const save = 20 + Math.floor(Math.random()*20);
+    const comment = save + Math.floor(Math.random()*80);
+    const like = comment + Math.floor(Math.random()*200);
+    const share = Math.min(2000, like + Math.floor(Math.random()*400));
+    return {share, like, comment, save};
+  })();
+  document.getElementById('shareCnt').textContent = counts.share.toLocaleString();
+  document.getElementById('likeCnt').textContent = counts.like.toLocaleString();
+  document.getElementById('commentCnt').textContent = counts.comment.toLocaleString();
+  document.getElementById('saveCnt').textContent = counts.save.toLocaleString();
 
-  // 모든 문항 체크 확인
-  function checkAllAnswered(){
-    const allAnswered = Array.from(document.querySelectorAll('.scale')).every(scale =>
-      scale.querySelector('input:checked')
-    );
-    nextBtn.disabled = !allAnswered;
-
-    document.querySelectorAll('label.chip').forEach(l => {
-      l.classList.toggle('selected', l.querySelector('input').checked);
-    });
-  }
-
-  // Firestore 저장 함수 (통합 문서)
+  // Firestore 저장
   async function saveToFirestore(answers){
     if(!pid) return;
     try{
-      const docRef = doc(db, "responses", pid);
-      await setDoc(docRef, {
-        [`page_${PAGE}`]: {
-          answers,
-          timestamp: serverTimestamp()
-        }
-      }, { merge:true });
-      console.log(`✅ Firestore 저장 완료 (page ${PAGE})`);
+      await addDoc(collection(db, "responses"), {
+        pid,
+        page: PAGE,
+        answers,
+        timestamp: new Date()
+      });
+      console.log("✅ Firestore 저장 완료 (page 10)");
     }catch(e){
       console.error("❌ Firestore 저장 실패:", e);
-      throw e;
     }
   }
 
-  // 다음 버튼 클릭
-  nextBtn.addEventListener('click', async () => {
-    const answers = Array.from(document.querySelectorAll('.scale')).map(scale => {
-      const input = scale.querySelector('input:checked');
-      return input ? { key: scale.dataset.qkey, value: input.value } : null;
-    }).filter(Boolean);
+  // 페이지 노출 기록
+  saveToFirestore([
+    { key: 'P9_STIM_KEY', value: STIM_KEY },
+    { key: 'P9_SHOWN_MS', value: String(DISPLAY_MS) }
+  ]);
 
-    if(!answers.every(a => a.value)) return;
-    nextBtn.disabled = true;
+  // 진행바 및 타이머
+  const bar = document.getElementById('bar');
+  let elapsed = 0;
+  const interval = setInterval(()=>{
+    elapsed += 1000;
+    bar.style.width = Math.min(100, (elapsed / DISPLAY_MS) * 100) + "%";
+    if (elapsed >= DISPLAY_MS) {
+      clearInterval(interval);
+      redirect();
+    }
+  }, 1000);
 
-    try {
-      await saveToFirestore(answers);
-      await new Promise(r=>setTimeout(r,200));
-    } catch(e){ console.warn(e); }
+  // 안전한 리디렉션
+  async function redirect(){
+    try{
+      await saveToFirestore([]);
+      await new Promise(r => setTimeout(r, 200));
+    }catch(e){ console.warn(e); }
 
     location.href = `${NEXT_PAGE_URL}?pid=${encodeURIComponent(pid)}`;
-  });
-});
-</script>
+  }
 
+})();
+</script>
 
 </body>
 </html>
